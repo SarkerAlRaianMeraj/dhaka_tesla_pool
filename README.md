@@ -4,7 +4,7 @@
 
 A ride-pooling MVP: passengers request multi-seat rides, a driver's Tesla can serve several passengers on compatible routes at once, and each passenger sees only their own fare and status.
 
-> **Project status — Phase 0 of 10 (scaffold).** The backend, the frontend, and the database stack are up; identity, ride requests, pooling, and the passenger/driver apps land in the following phases. See [`PROJECT_PLAN.md`](PROJECT_PLAN.md) for the phase-by-phase delivery plan and its acceptance gates.
+> **Project status — Phase 0 of 10 complete (scaffold).** The backend, the frontend, and the database stack are up; identity, ride requests, pooling, and the passenger/driver apps land in the following phases. See [`PROJECT_PLAN.md`](PROJECT_PLAN.md) for the phase-by-phase delivery plan and its acceptance gates.
 
 ## Repository layout
 
