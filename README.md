@@ -4,7 +4,7 @@
 
 A ride-pooling MVP: passengers request multi-seat rides, a driver's Tesla can serve several passengers on compatible routes at once, and each passenger sees only their own fare and status.
 
-> **Project status — Phase 0 of 10 complete (scaffold).** The backend, the frontend, and the database stack are up; identity, ride requests, pooling, and the passenger/driver apps land in the following phases. See [`PROJECT_PLAN.md`](PROJECT_PLAN.md) for the phase-by-phase delivery plan and its acceptance gates.
+> **Project status — Phase 1 of 10 complete (identity and zones).** Sign up, sign in, and land on a role-aware home screen; the eight Dhaka zones are served by the API. Ride requests, pooling, and the driver's Tesla registration land in the following phases. See [`PROJECT_PLAN.md`](PROJECT_PLAN.md) for the phase-by-phase delivery plan and its acceptance gates.
 
 ## Repository layout
 
@@ -70,5 +70,18 @@ The stack brings up PostgreSQL, runs migrations as a one-shot service, then star
 - Architecture — [`docs/architecture.md`](docs/architecture.md)
 - Decisions and trade-offs — [`docs/decisions.md`](docs/decisions.md)
 - AI usage disclosure — [`AI_USAGE.md`](AI_USAGE.md)
+
+## Coding standards
+
+Every file written in this repository follows the course standards, which are the
+source of truth for structure, naming, and style:
+
+- [`backend/rules.md`](backend/rules.md) — NestJS 3-tier layering, module and DTO layout, TypeORM entities, guards, JWT, bcrypt, exceptions.
+- [`frontend/rules.md`](frontend/rules.md) — Next.js App Router with no `src/` directory, axios as the only HTTP client, Zod-only form validation, Tailwind CSS + daisyUI, httpOnly cookie authentication.
+
+Where this codebase departs from those standards — UUID primary keys, migrations
+instead of `synchronize`, no `express-session`, Tailwind 4's CSS-first config —
+the departure and its reason are written down in
+[`docs/decisions.md`](docs/decisions.md). Deviations are decisions, not accidents.
 
 Demo credentials, screenshots, API overview, deployment link, and the demonstration video are added as the phases land; the README checklist in the brief §7.5 is satisfied before `release/v1.0.0` is cut.
