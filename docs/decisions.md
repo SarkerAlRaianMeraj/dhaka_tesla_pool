@@ -15,6 +15,8 @@
 | D9 | `zones` table added beyond the SRS entity list | to expand in Phase 1 |
 | D10 | `pools.seat_capacity` denormalised to make the capacity check a real constraint | to expand in Phase 4 |
 | D11 | TeslaPay balance stored on `users` rather than a separate wallets table | to expand in Phase 6 |
+| D12 | One active pool per Tesla, enforced by a partial unique index | settled, applied in Phase 4 |
+| D13 | Fixed lock order and a transaction-manager rule for seat claims | settled, applied in Phase 4 |
 
 ## Why the obvious alternatives were rejected
 
@@ -28,6 +30,19 @@
 
 ### D8 — Framework versions
 - NestJS, Express, Fastify, and plain Node were all candidates. NestJS wins on guard/pipe/module conventions that make authorization reviewable and consistent, which is what the "backend design" criterion actually rewards. Versions are pinned to a stable major rather than the newest release; a stable, documented API beats a fresh major for a submission that must run reproducibly on an evaluator's machine.
+
+### D12 — One active pool per Tesla
+Seat assignment locks a pool row and checks capacity against it. That guarantee is only as good as the assumption that a Tesla has exactly one active pool. If the pool row were created lazily on first acceptance, two concurrent accepts could each create a pool, leaving Bullet with 2 + 1 seats instead of 3 — capacity respected, but the product broken: two pools for one vehicle, and the demo story of a single shared Tesla impossible to reproduce.
+
+- **Fix:** a partial unique index, `UNIQUE (tesla_id) WHERE status IN ('FORMING','ACTIVE')`. The database then guarantees the invariant; a losing insert fails and the claim retries against the existing pool.
+- **Alternative considered:** creating the pool at acceptance of the first request inside the same locked transaction. Still racy, because two transactions can both observe "no active pool" before either inserts.
+- **Cost:** a completed pool must leave the index range before a new one can open, so pool status transitions have to be written carefully. This is acceptable: the trip is over before a new pool starts.
+
+### D13 — Fixed lock order, and every claim read inside the transaction
+A row lock protects only the rows it is taken on, inside the transaction that took it. Two ways to quietly break D5: reading the pool through the default entity manager instead of the transaction manager (the read is served outside the transaction, so it can be stale), and taking locks in a different order in two code paths (classic deadlock, which the database resolves by aborting one transaction — turning a capacity guarantee into a user-visible error).
+
+- **Fix, both parts:** seat claims go through a single function; every read and write in it uses the transaction manager; and locks are always acquired **pool row first, then ride request** — one global order, so no cycle can form.
+- **Alternative considered:** `SERIALIZABLE` isolation for the claim transaction, letting the database abort conflicts instead of waiting. Correct, but it converts contention into failed requests that must be retried. Revisit if p99 latency under load becomes a problem.
 
 ## Trade-offs we are knowingly accepting
 
