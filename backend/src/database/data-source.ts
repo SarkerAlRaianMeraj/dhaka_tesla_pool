@@ -1,4 +1,7 @@
 import 'reflect-metadata';
+// Loads backend/.env for standalone scripts (migrations, seeds). The running app
+// gets the same values through ConfigModule, so both paths read one file.
+import 'dotenv/config';
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { buildConfiguration } from '../config/configuration';
 import { validateEnv } from '../config/env.validation';
