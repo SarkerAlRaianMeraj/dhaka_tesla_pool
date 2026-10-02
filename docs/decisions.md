@@ -1,6 +1,8 @@
 # Decisions — Dhaka Tesla Pool
 
-**Status:** Phase 0 skeleton. Each decision records what was chosen, the realistic alternative, why the choice fits a ride-pooling MVP, and what would make us change it. Product-level versions of these rules live in `PRD_Dhaka_Tesla_Pool.md` §6.
+**Status:** Phase 1 complete. Each decision records what was chosen, the realistic alternative, why the choice fits a ride-pooling MVP, and what would make us change it. Product-level versions of these rules live in `PRD_Dhaka_Tesla_Pool.md` §6.
+
+The course standards (`backend/rules.md`, `frontend/rules.md`) are the source of truth for day-to-day structure and style. D16–D21 record every place this codebase deliberately departs from them; the README points here rather than restating them, so the list cannot drift.
 
 | # | Decision | Status |
 |---|---|---|
@@ -11,14 +13,20 @@
 | D5 | Seat claim is a locked transaction with a database-level capacity check | settled (PRD §6.3) |
 | D6 | Polling for live status instead of WebSockets | settled (PRD §9.3 A3) |
 | D7 | Passengers may join a matchable pool without per-join driver approval | settled (PRD §9.3 A2) |
-| D8 | Stack: NestJS 11 + Next.js 16 + PostgreSQL + TypeORM | in progress (Phase 0/1) |
-| D9 | `zones` table added beyond the SRS entity list | to expand in Phase 1 |
+| D8 | Stack: NestJS 11 + Next.js 16 + PostgreSQL + TypeORM | settled (Phase 1) |
+| D9 | `zones` table added beyond the SRS entity list | settled, applied in Phase 1 |
 | D10 | `pools.seat_capacity` denormalised to make the capacity check a real constraint | to expand in Phase 4 |
 | D11 | TeslaPay balance stored on `users` rather than a separate wallets table | to expand in Phase 6 |
 | D12 | One active pool per Tesla, enforced by a partial unique index | settled, applied in Phase 4 |
 | D13 | Fixed lock order and a transaction-manager rule for seat claims | settled, applied in Phase 4 |
 | D14 | bcrypt via `bcryptjs` instead of the native binding | settled, applied in Phase 1 |
 | D15 | JWT delivered as an httpOnly cookie, Bearer header kept as a fallback | settled, applied in Phase 1 |
+| D16 | UUID primary keys instead of incrementing integers | settled, applied in Phase 1 |
+| D17 | Migrations instead of `synchronize: true` | settled, applied in Phase 0 |
+| D18 | No `express-session`; the JWT cookie is the session | settled, applied in Phase 1 |
+| D19 | Tailwind 4 CSS-first configuration, no `tailwind.config.ts` | settled, applied in Phase 1 |
+| D20 | The web app runs on port 3001, not the standard 3000 | settled, applied in Phase 1 |
+| D21 | Identity is owned by the auth module, so `src/user/` holds only the entity | settled, applied in Phase 1 |
 
 ## Why the obvious alternatives were rejected
 
@@ -32,6 +40,13 @@
 
 ### D8 — Framework versions
 - NestJS, Express, Fastify, and plain Node were all candidates. NestJS wins on guard/pipe/module conventions that make authorization reviewable and consistent, which is what the "backend design" criterion actually rewards. Versions are pinned to a stable major rather than the newest release; a stable, documented API beats a fresh major for a submission that must run reproducibly on an evaluator's machine.
+
+### D9 — A `zones` reference table, beyond the SRS entity list
+The SRS entity list has no geography, but FR-M1 requires matching by pickup zone and destination corridor, and the fare rule is defined over zone distance. Both are impossible without somewhere to put the eight Dhaka zones.
+
+- **Chosen:** `zones` with a coordinate grid (`x_km`, `y_km`), a `corridors` table, and a `zone_corridors` join table. Manhattan distance on the grid is the fare input; corridor intersection is half the matching rule.
+- **Alternative considered:** deriving geography from coordinates embedded in each ride request. Rejected — the zones would drift out of agreement between requests, "Banani" would stop being the same place, and the fare would stop being verifiable by hand (FR-F1).
+- **Cost:** zone data is now schema the application depends on, so it is seeded by migration rather than left empty. Real road routing stays out of scope either way (assumption A5).
 
 ### D12 — One active pool per Tesla
 Seat assignment locks a pool row and checks capacity against it. That guarantee is only as good as the assumption that a Tesla has exactly one active pool. If the pool row were created lazily on first acceptance, two concurrent accepts could each create a pool, leaving Bullet with 2 + 1 seats instead of 3 — capacity respected, but the product broken: two pools for one vehicle, and the demo story of a single shared Tesla impossible to reproduce.
@@ -59,6 +74,50 @@ An earlier draft kept the token in `localStorage` and accepted the XSS exposure.
 - **CORS:** the browser will only store and send the cookie if the response carries `Access-Control-Allow-Credentials`, so the client sets `withCredentials: true` and the API keeps an explicit origin list. `origin: true` was rejected because it reflects any origin *and* pairs it with credentials.
 - **Scripts keep working:** the guard accepts `Authorization: Bearer <token>` when no cookie is present, so `curl`, Postman, and the demonstration scripts work without a cookie jar. When both are present the cookie wins.
 - **Cost:** SSR cannot call authenticated endpoints, because the browser's cookie is not available to the Next.js server. Authenticated pages are therefore client-rendered, which also matches the rendering-strategy table in `frontend/rules.md` (dashboards are CSR).
+
+## Departures from the course standards
+
+Each of these contradicts a specific line in `backend/rules.md` or `frontend/rules.md`. They are decisions, not accidents: the standard is followed everywhere it does not conflict with a requirement of this brief.
+
+### D16 — UUID primary keys instead of incrementing integers
+`backend/rules.md:131` shows a bare `@PrimaryGeneratedColumn()`, which in PostgreSQL means an auto-incrementing integer. Every entity here uses `@PrimaryGeneratedColumn('uuid')`.
+
+- **Why:** a pooled ride exposes its identifiers to two strangers and appears in URLs, logs, and audit records. Sequential integers let anyone who registers after Nusrat infer how many accounts exist, and let someone enumerate a ride by counting up. UUIDs remove that inference for free.
+- **Cost:** 16 bytes instead of 4, no clustered insert locality, and indices grow faster. Irrelevant at MVP volume; it becomes a real consideration only past the scale the reasoning in Phase 10 addresses.
+- **Alternative considered:** integer keys with an opaque public id per ride. Rejected — two identifiers for one row is more state to keep consistent than one identifier that is safe to expose.
+
+### D17 — Migrations instead of `synchronize: true`
+`backend/rules.md:436` sets `synchronize: true` in the TypeORM connection options. This project runs versioned migrations from `backend/src/database/migrations/` and never enables it.
+
+- **Why:** `synchronize` derives the schema from the entity classes at boot. That means a half-finished refactor silently changes production data, there is no record of what the schema was at any past commit, and rolling back is impossible. The brief (§6, §12) requires a reproducible install from migrations, and asks for a seed that reviewers can run — neither is reproducible if the database rebuilds itself from whatever the current entities happen to say.
+- **Cost:** every schema change needs a migration written by hand, and an entity change that forgets its migration is a runtime error rather than a silent fix.
+- **Alternative considered:** `synchronize` in development and migrations in production. Rejected — the two would drift, and the environment where a bug appears would never be the environment where it was found.
+
+### D18 — No `express-session`; the JWT cookie is the session
+`backend/rules.md:332` sets up `express-session` with a cookie. This project stores nothing in a server-side session store; the signed JWT *is* the session, delivered in the httpOnly cookie described in D15.
+
+- **Why:** a server-side session needs somewhere to keep sessions. That is either a shared store — which breaks the moment the API is run as more than one instance — or an in-process `MemoryStore`, which silently drops every session on restart and is explicitly not for production. The brief's NFR-5 asks for a stack reproducible with `docker compose up` on a machine that only has Docker, and adding a session store is exactly the kind of "advanced technology" the brief rules out (NFR-7).
+- **Cost:** the token cannot be revoked before it expires. Logout clears the cookie client-side and server-side, but a stolen token stays valid until its lifetime ends. The mitigation is a short expiry plus D15's rule that the client cannot read the token to begin with.
+- **Alternative considered:** `express-session` plus a database-backed store. Correct for a conventional app, and the wrong shape for an MVP whose entire state model already lives in PostgreSQL.
+
+### D19 — Tailwind 4 CSS-first configuration, no `tailwind.config.ts`
+`frontend/rules.md:47` lists `tailwind.config.ts` with `plugins: [require("daisyui")]` (lines 284–290). This project has no Tailwind config file at all: `frontend/app/globals.css` contains `@import "tailwindcss"` and `@plugin "daisyui"`.
+
+- **Why:** Tailwind 4 moved configuration into CSS. A `tailwind.config.ts` would need the `@config` directive to be loaded at all, so keeping one would mean writing the file in a compatibility mode that the installed major version no longer recommends. The dependency is already declared in `package.json` either way.
+- **Cost:** a reader expecting the familiar config file has to look in `globals.css` instead. The theme choice is now a `@plugin "daisyui" { themes: … }` block rather than a `daisyui.themes` array.
+
+### D20 — The web app runs on port 3001, not the standard 3000
+`frontend/rules.md:21-22` runs the web app on `localhost:3000` and suggests changing the port in `package.json`. This project runs the API on 3000 (it is a `/api/v1` service the standard assumes already exists) and the web app on 3001, set in `frontend/package.json` and mapped by `WEB_PORT` in `docker-compose.yml`.
+
+- **Why:** two processes cannot both bind 3000 on a development machine. Moving the API instead would break the standard's own assumption that the NestJS backend is the thing already on 3000.
+- **Cost:** the URLs in the README and in the demo video differ from the standard's. The variable is declared in one place per app, so changing it back is a one-line edit.
+
+### D21 — Identity is owned by the auth module, so `src/user/` holds only the entity
+`backend/rules.md:32` shows each module folder holding a module, controller, service, entity, and `dto/` files. `backend/src/user/` contains only `user.entity.ts`, because registration, login, and profile are all auth endpoints (US-P1) and live in `backend/src/auth/`.
+
+- **Why:** creating a `UserController` and `UserService` with no endpoints of their own would be scaffolding written to satisfy a folder shape rather than to serve a requirement. `auth.service.ts` is where a user is actually created and read.
+- **Cost:** a reader looking for user endpoints under `src/user/` will not find them; the answer is one hop away in `src/auth/`, which `auth.module.ts` imports by entity path.
+- **Alternative considered:** a real `user` module owning `GET /users/me`. Rejected for now — it would split identity across two modules for one endpoint, and Phase 6 (TeslaPay balance, rating history) is the point at which a user module earns its existence.
 
 ## Trade-offs we are knowingly accepting
 
