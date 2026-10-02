@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { AuthenticatedUser } from '../auth/authenticated-user';
 import { isRole } from '../enums/role.enum';
+import { ACCESS_TOKEN_COOKIE } from '../../auth/auth.cookie';
 
 export type JwtPayload = {
   sub: string;
@@ -43,7 +44,7 @@ export class JwtAuthGuard {
     }
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const token = extractBearerToken(request);
+    const token = extractToken(request);
     if (!token) {
       throw new UnauthorizedException('Authentication required');
     }
@@ -71,11 +72,24 @@ export class JwtAuthGuard {
   }
 }
 
-function extractBearerToken(request: Request): string | undefined {
+/**
+ * The cookie is the browser path (D15: httpOnly, so JavaScript cannot read it).
+ * The `Authorization: Bearer` header is still accepted so that `curl`, Postman,
+ * and the scripts used to demonstrate the API work without a cookie jar. A caller
+ * that presents both must present the same identity, so the cookie wins and the
+ * header is only a fallback.
+ */
+function extractToken(request: Request): string | undefined {
+  const cookies = request.cookies as Record<string, string> | undefined;
+  const cookieToken = cookies?.[ACCESS_TOKEN_COOKIE];
+  if (cookieToken && cookieToken.length > 0) {
+    return cookieToken;
+  }
+
   const header = request.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
     return undefined;
   }
-  const token = header.slice('Bearer '.length).trim();
-  return token.length > 0 ? token : undefined;
+  const bearerToken = header.slice('Bearer '.length).trim();
+  return bearerToken.length > 0 ? bearerToken : undefined;
 }

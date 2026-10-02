@@ -6,15 +6,22 @@ Disclosed per SRS §7.6 and the challenge brief §8: AI tools are permitted, mus
 
 | Tool | Used for |
 |---|---|
-| opencode (Claude-based coding agent, running in a terminal) | Writing and refactoring source files, scaffolding configuration, drafting tests, drafting documentation, and running build/lint/test commands |
+| opencode (Claude-based coding agent, running in a terminal) | Writing and refactoring source files, scaffolding configuration, drafting documentation, and running build/lint/test commands |
 | Web search / documentation lookups | Verifying library APIs and versions before use rather than relying on recall |
 | The challenge brief and SRS | Requirements, acceptance criteria, and the story cast — all human-authored inputs to this project |
+
+## Phase-by-phase record
+
+| Phase | What the AI produced | What a human decided or checked |
+|---|---|---|
+| 0 | Scaffold, compose topology, health probe, migration runner | Topology, ports, the local-PostgreSQL development stance |
+| 1 | Entity and migration code, auth endpoints and guards, the three screens, the axios client and Zod schemas | Every product rule; bcrypt over scrypt; the httpOnly cookie over `localStorage`; all departures from the course standards (D14–D21), each reviewed and recorded |
 
 ## What the AI did and did not decide
 
 - **Did:** propose file structures, entity fields, guard and middleware wiring, Dockerfile shapes, and draft prose for the PRD and docs.
 - **Did not:** choose the matching rule, the fare model, the capacity mechanism, or the scope boundaries. Those are documented decisions in `docs/decisions.md` and `PRD_Dhaka_Tesla_Pool.md`, derived from the brief and reviewed by the team.
-- **Verification rule applied throughout:** nothing is committed unless `npm run build`, `npm run lint`, and the phase's tests pass. Code that failed to build was fixed or removed, never accepted because the AI produced it.
+- **Verification rule applied throughout:** nothing is committed unless `npm run build` and `npm run lint` are green and the phase's slice has been clicked through end to end. Phases 1–8 write no test files; the six required behaviours are proven in Phase 9 (see `PROJECT_PLAN.md`). Code that failed to build was fixed or removed, never accepted because the AI produced it.
 
 ## One accepted suggestion
 
