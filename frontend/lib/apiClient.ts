@@ -19,7 +19,7 @@ export const apiClient = axios.create({
 });
 
 /** A message safe to show a user, extracted from whichever shape came back. */
-export function getErrorMessage(error: unknown, fallback: string): string {
+export const getErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof AxiosError) {
     const data = error.response?.data as
       | { message?: string | string[] }
@@ -30,11 +30,8 @@ export function getErrorMessage(error: unknown, fallback: string): string {
   }
   if (error instanceof Error && error.message) return error.message;
   return fallback;
-}
+};
 
 /** 401 means the session is gone or expired, which is what drives sign-out. */
-export function isUnauthorized(error: unknown): boolean {
-  return (
-    error instanceof AxiosError && error.response?.status === 401
-  );
-}
+export const isUnauthorized = (error: unknown): boolean =>
+  error instanceof AxiosError && error.response?.status === 401;

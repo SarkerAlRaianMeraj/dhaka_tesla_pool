@@ -8,11 +8,12 @@ import {
   PrimaryButton,
   TextInput,
 } from "@/components/form-controls";
-import { useAuth } from "@/lib/auth-context";
+import { Layout } from "@/components/Layout/layout";
 import { getErrorMessage } from "@/lib/apiClient";
+import { useAuth } from "@/lib/auth-context";
 import { firstIssue, loginSchema, type LoginData } from "@/lib/schemas";
 
-export default function LoginPage() {
+const LoginPage = () => {
   const router = useRouter();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
@@ -34,8 +35,8 @@ export default function LoginPage() {
     setPending(true);
     try {
       await login(data);
-      // The dashboard decides what to render from the role in the cookie, so there
-      // is no role-specific redirect here to keep in sync.
+      // The dashboard decides what to render from the role in the cookie, so
+      // there is no role-specific redirect here to keep in sync.
       router.push("/dashboard");
     } catch (caught) {
       setError(
@@ -50,7 +51,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-12">
+    <Layout width="narrow">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
         <p className="text-sm text-base-content/70">
@@ -85,6 +86,8 @@ export default function LoginPage() {
           Create an account
         </Link>
       </p>
-    </main>
+    </Layout>
   );
-}
+};
+
+export default LoginPage;

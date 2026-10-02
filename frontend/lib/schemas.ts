@@ -40,6 +40,5 @@ export type RegisterData = z.infer<typeof registerSchema>;
 export type LoginData = z.infer<typeof loginSchema>;
 
 /** First message from a failed parse, which is all a single-line banner shows. */
-export function firstIssue(error: z.ZodError): string {
-  return error.issues[0]?.message ?? "Check the form and try again";
-}
+export const firstIssue = (error: z.ZodError): string =>
+  error.issues[0]?.message ?? "Check the form and try again";

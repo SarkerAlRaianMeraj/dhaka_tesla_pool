@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FormError } from "@/components/form-controls";
+import { Layout } from "@/components/Layout/layout";
 import { apiClient, getErrorMessage, isUnauthorized } from "@/lib/apiClient";
 import { useAuth } from "@/lib/auth-context";
 import type { Zone } from "@/lib/types";
@@ -11,13 +12,13 @@ import type { Zone } from "@/lib/types";
 /**
  * The role-aware landing screen after sign-in.
  *
- * It proves the identity slice end to end: the session cookie decides which of the
- * two home screens is rendered, and the zone list proves the browser is making
- * authenticated calls. Ride requests and Tesla registration arrive in later phases,
- * so each panel states plainly what is not built yet rather than showing a control
- * that does nothing.
+ * It proves the identity slice end to end: the session cookie decides which of
+ * the two home screens is rendered, and the zone list proves the browser is
+ * making authenticated calls. Ride requests and Tesla registration arrive in
+ * later phases, so each panel states plainly what is not built yet rather than
+ * showing a control that does nothing.
  */
-export default function DashboardPage() {
+const DashboardPage = () => {
   const router = useRouter();
   const { user, isLoading, logout } = useAuth();
   const [zones, setZones] = useState<Zone[]>([]);
@@ -54,9 +55,11 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16 text-sm text-base-content/60">
-        Checking your session...
-      </main>
+      <Layout>
+        <p className="text-sm text-base-content/60">
+          Checking your session...
+        </p>
+      </Layout>
     );
   }
 
@@ -65,7 +68,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-12">
+    <Layout>
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-medium tracking-wide text-primary uppercase">
@@ -79,7 +82,11 @@ export default function DashboardPage() {
             <span className="badge badge-outline badge-sm">{user.role}</span>
           </p>
         </div>
-        <button type="button" onClick={() => void logout()} className="btn btn-outline btn-sm">
+        <button
+          type="button"
+          onClick={() => void logout()}
+          className="btn btn-outline btn-sm"
+        >
           Sign out
         </button>
       </header>
@@ -90,8 +97,9 @@ export default function DashboardPage() {
             <div className="card-body">
               <h2 className="card-title">Request a ride</h2>
               <p className="text-sm text-base-content/70">
-                Pick a pickup and destination, see the exact fare before you commit,
-                then watch the status change as drivers accept. Arrives in phase 2.
+                Pick a pickup and destination, see the exact fare before you
+                commit, then watch the status change as drivers accept. Arrives in
+                phase 2.
               </p>
             </div>
           </article>
@@ -128,7 +136,10 @@ export default function DashboardPage() {
         <FormError>{zoneError}</FormError>
         <ul className="grid gap-2 sm:grid-cols-2">
           {zones.map((zone) => (
-            <li key={zone.code} className="rounded-box border border-base-300 px-3 py-2 text-sm">
+            <li
+              key={zone.code}
+              className="rounded-box border border-base-300 px-3 py-2 text-sm"
+            >
               <span className="font-medium">{zone.name}</span>{" "}
               <span className="text-base-content/50">{zone.code}</span>
               <span className="block text-xs text-base-content/50">
@@ -145,6 +156,8 @@ export default function DashboardPage() {
           overview
         </Link>
       </p>
-    </main>
+    </Layout>
   );
-}
+};
+
+export default DashboardPage;

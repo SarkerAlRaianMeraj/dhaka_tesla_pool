@@ -9,16 +9,13 @@ import {
   Select,
   TextInput,
 } from "@/components/form-controls";
-import { useAuth } from "@/lib/auth-context";
+import { Layout } from "@/components/Layout/layout";
 import { getErrorMessage } from "@/lib/apiClient";
-import {
-  firstIssue,
-  registerSchema,
-  type RegisterData,
-} from "@/lib/schemas";
+import { useAuth } from "@/lib/auth-context";
+import { firstIssue, registerSchema, type RegisterData } from "@/lib/schemas";
 import type { Role } from "@/lib/types";
 
-export default function RegisterPage() {
+const RegisterPage = () => {
   const router = useRouter();
   const { register } = useAuth();
   const [name, setName] = useState("");
@@ -42,8 +39,9 @@ export default function RegisterPage() {
     setPending(true);
     try {
       await register(data);
-      // Registering sets no cookie by design, so the user signs in first. That step
-      // is explicit rather than automatic because it mirrors the API contract.
+      // Registering sets no cookie by design, so the user signs in first. That
+      // step is explicit rather than automatic because it mirrors the API
+      // contract.
       router.push("/login");
     } catch (caught) {
       setError(
@@ -58,14 +56,14 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-12">
+    <Layout width="narrow">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">
           Create an account
         </h1>
         <p className="text-sm text-base-content/70">
-          One account for riding or driving. You can change the story later, not the
-          identity.
+          One account for riding or driving. You can change the story later, not
+          the identity.
         </p>
       </div>
       <div className="card bg-base-100 shadow-xl">
@@ -115,6 +113,8 @@ export default function RegisterPage() {
           Sign in
         </Link>
       </p>
-    </main>
+    </Layout>
   );
-}
+};
+
+export default RegisterPage;
