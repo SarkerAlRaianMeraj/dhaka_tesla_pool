@@ -1,104 +1,94 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 import {
+  createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
-  createContext,
+  useState,
   type ReactNode,
-} from 'react';
-import { ApiError, apiRequest } from './api';
-import {
-  clearSession,
-  markValidated,
-  setSession,
-  useSession,
-} from './session-store';
-import type { AuthSession, LoginInput, RegisterInput, SessionUser } from './types';
+} from "react";
+import { apiClient, getErrorMessage, isUnauthorized } from "./apiClient";
+import type { LoginData, RegisterData } from "./schemas";
+import type { LoginResponse, RegisterResponse, SessionUser } from "./types";
 
 /**
- * Client-side session.
+ * Client-side session state.
  *
- * The JWT is kept in `localStorage` so a refresh does not sign the user out — a
- * deliberate MVP trade-off. A production deployment would prefer an httpOnly,
- * Secure cookie so the token cannot be read by injected script; that change is
- * local to `session-store.ts` and to the NestJS cookie strategy
- * (docs/decisions.md D14).
+ * There is deliberately nothing stored in `localStorage`: the JWT is an httpOnly
+ * cookie that JavaScript cannot read (D15), so "am I signed in?" is answered by
+ * asking the API. That costs one `GET /auth/me` on load and buys the fact that
+ * no token is ever reachable by injected script.
+ *
+ * `isLoading` is true on the server render and on the first client render alike,
+ * so the markup matches during hydration and no signed-out flash appears.
  */
 type AuthContextValue = {
   user: SessionUser | null;
-  token: string | null;
   isLoading: boolean;
-  login: (input: LoginInput) => Promise<SessionUser>;
-  register: (input: RegisterInput) => Promise<void>;
-  logout: () => void;
+  login: (data: LoginData) => Promise<SessionUser>;
+  register: (data: RegisterData) => Promise<void>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { session, validated } = useSession();
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const token = session?.accessToken ?? null;
-  const isLoading = token !== null && !validated;
-
-  // Confirm a restored token with the API. An expired or tampered token is
-  // cleared, which drops the app back to signed out. The check is asynchronous,
-  // so it never blocks first paint of a signed-out visitor.
   useEffect(() => {
-    if (!token || validated) return;
-
     let cancelled = false;
-    const confirm = async () => {
+
+    const fetchSession = async () => {
       try {
-        await apiRequest<SessionUser>('/auth/me', { token });
-        if (!cancelled) markValidated();
-      } catch (caught) {
-        if (cancelled) return;
-        if (caught instanceof ApiError && caught.statusCode === 401) {
-          clearSession();
-        } else {
-          // The API is down rather than the token being bad: keep the session and
-          // let the next request surface the problem, so a restart of the backend
-          // does not sign everyone out.
-          markValidated();
+        const response = await apiClient.get<SessionUser>("/auth/me");
+        if (!cancelled) setUser(response.data);
+      } catch (error) {
+        // 401 simply means signed out, which is the normal case on a first visit.
+        // A network failure is also tolerated: the user simply appears signed out
+        // and the next request surfaces the real problem.
+        if (!cancelled && !isUnauthorized(error)) {
+          console.error(getErrorMessage(error, "Session check failed"));
         }
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
     };
 
-    void confirm();
+    void fetchSession();
     return () => {
       cancelled = true;
     };
-  }, [token, validated]);
-
-  const login = useCallback(async (input: LoginInput) => {
-    const session = await apiRequest<AuthSession>('/auth/login', {
-      method: 'POST',
-      body: input,
-    });
-    setSession(session);
-    return session.user;
   }, []);
 
-  const register = useCallback(async (input: RegisterInput) => {
-    await apiRequest<{ message: string }>('/auth/register', {
-      method: 'POST',
-      body: input,
-    });
+  const login = useCallback(async (data: LoginData): Promise<SessionUser> => {
+    const response = await apiClient.post<LoginResponse>("/auth/login", data);
+    setUser(response.data.user);
+    return response.data.user;
   }, []);
 
-  const logout = useCallback(() => {
-    clearSession();
-    router.push('/');
+  const register = useCallback(async (data: RegisterData): Promise<void> => {
+    await apiClient.post<RegisterResponse>("/auth/register", data);
+  }, []);
+
+  const logout = useCallback(async (): Promise<void> => {
+    try {
+      await apiClient.post("/auth/logout");
+    } finally {
+      // The local state is cleared even if the request fails: the user asked to
+      // leave, and the cookie expires on its own regardless.
+      setUser(null);
+      router.push("/");
+    }
   }, [router]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user: session?.user ?? null, token, isLoading, login, register, logout }),
-    [session, token, isLoading, login, register, logout],
+    () => ({ user, isLoading, login, register, logout }),
+    [user, isLoading, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -107,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used inside <AuthProvider>');
+    throw new Error("useAuth must be used inside <AuthProvider>");
   }
   return context;
 }

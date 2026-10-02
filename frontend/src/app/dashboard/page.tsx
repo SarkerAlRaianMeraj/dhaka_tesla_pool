@@ -1,27 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { FormError } from "@/components/form-controls";
-import { ApiError, apiRequest } from "@/lib/api";
+import { apiClient, getErrorMessage, isUnauthorized } from "@/lib/apiClient";
 import { useAuth } from "@/lib/auth-context";
 import type { Zone } from "@/lib/types";
 
 /**
  * The role-aware landing screen after sign-in.
  *
- * It exists to prove the identity slice end to end: the JWT decides which of the
+ * It proves the identity slice end to end: the session cookie decides which of the
  * two home screens is rendered, and the zone list proves the browser is making
- * authenticated calls. Ride requests and Tesla registration arrive in later
- * phases, so each panel states plainly what is not built yet rather than showing
- * a fake control.
+ * authenticated calls. Ride requests and Tesla registration arrive in later phases,
+ * so each panel states plainly what is not built yet rather than showing a control
+ * that does nothing.
  */
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, token, isLoading, logout } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const [zones, setZones] = useState<Zone[]>([]);
-  const [error, setError] = useState<string>();
+  const [zoneError, setZoneError] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (isLoading) return;
@@ -31,27 +31,30 @@ export default function DashboardPage() {
     }
 
     let cancelled = false;
-    apiRequest<Zone[]>("/zones", { token })
-      .then((data) => {
-        if (!cancelled) setZones(data);
-      })
-      .catch((caught: unknown) => {
-        if (cancelled) return;
-        setError(
-          caught instanceof ApiError
-            ? caught.message
-            : "Could not load the zone list.",
-        );
-      });
 
+    const fetchZones = async (): Promise<void> => {
+      try {
+        const response = await apiClient.get<Zone[]>("/zones");
+        if (!cancelled) setZones(response.data);
+      } catch (caught) {
+        if (cancelled) return;
+        if (isUnauthorized(caught)) {
+          router.replace("/login");
+          return;
+        }
+        setZoneError(getErrorMessage(caught, "Could not load the zone list."));
+      }
+    };
+
+    void fetchZones();
     return () => {
       cancelled = true;
     };
-  }, [isLoading, user, token, router]);
+  }, [isLoading, user, router]);
 
   if (isLoading) {
     return (
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16 text-sm text-zinc-500">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16 text-sm text-base-content/60">
         Checking your session...
       </main>
     );
@@ -65,68 +68,70 @@ export default function DashboardPage() {
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-12">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium tracking-wide text-emerald-700 uppercase">
+          <p className="text-sm font-medium tracking-wide text-primary uppercase">
             {user.role === "driver" ? "Driver home" : "Passenger home"}
           </p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">
             Hello, {user.name.split(" ")[0]}
           </h1>
-          <p className="mt-1 text-sm text-zinc-600">
+          <p className="mt-1 text-sm text-base-content/70">
             Signed in as {user.email} &middot; role{" "}
-            <code className="rounded bg-zinc-100 px-1 py-0.5">{user.role}</code>
+            <span className="badge badge-outline badge-sm">{user.role}</span>
           </p>
         </div>
-        <button
-          type="button"
-          onClick={logout}
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-50"
-        >
+        <button type="button" onClick={() => void logout()} className="btn btn-outline btn-sm">
           Sign out
         </button>
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2">
         {user.role === "passenger" ? (
-          <article className="rounded-lg border border-zinc-200 p-4">
-            <h2 className="font-medium">Request a ride</h2>
-            <p className="mt-2 text-sm text-zinc-600">
-              Pick a pickup and destination, see the exact fare before you commit,
-              then watch the status change as drivers accept. Arrives in phase 2.
-            </p>
+          <article className="card bg-base-100 shadow">
+            <div className="card-body">
+              <h2 className="card-title">Request a ride</h2>
+              <p className="text-sm text-base-content/70">
+                Pick a pickup and destination, see the exact fare before you commit,
+                then watch the status change as drivers accept. Arrives in phase 2.
+              </p>
+            </div>
           </article>
         ) : (
-          <article className="rounded-lg border border-zinc-200 p-4">
-            <h2 className="font-medium">Register Bullet</h2>
-            <p className="mt-2 text-sm text-zinc-600">
-              Add your Tesla with its seat capacity, go online, and see only the
-              requests a pooled route can actually serve. Arrives in phase 3.
-            </p>
+          <article className="card bg-base-100 shadow">
+            <div className="card-body">
+              <h2 className="card-title">Register Bullet</h2>
+              <p className="text-sm text-base-content/70">
+                Add your Tesla with its seat capacity, go online, and see only the
+                requests a pooled route can actually serve. Arrives in phase 3.
+              </p>
+            </div>
           </article>
         )}
-        <article className="rounded-lg border border-zinc-200 p-4">
-          <h2 className="font-medium">Your TeslaPay balance</h2>
-          <p className="mt-2 text-3xl font-semibold tabular-nums">
-            {user.teslaPayBalancePoysha.toLocaleString("en-US")}{" "}
-            <span className="text-base font-normal text-zinc-500">poysha</span>
-          </p>
-          <p className="mt-2 text-sm text-zinc-600">
-            Simulated wallet, integer poysha, never a float. Top-ups arrive in phase 6.
-          </p>
+        <article className="card bg-base-100 shadow">
+          <div className="card-body">
+            <h2 className="card-title">Your TeslaPay balance</h2>
+            <p className="text-3xl font-semibold tabular-nums">
+              {user.teslaPayBalancePoysha.toLocaleString("en-US")}{" "}
+              <span className="text-base font-normal text-base-content/60">
+                poysha
+              </span>
+            </p>
+            <p className="text-sm text-base-content/70">
+              Simulated wallet, integer poysha, never a float. Top-ups arrive in
+              phase 6.
+            </p>
+          </div>
         </article>
       </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-medium">Dhaka zones in the system</h2>
-        <FormError>{error}</FormError>
+        <FormError>{zoneError}</FormError>
         <ul className="grid gap-2 sm:grid-cols-2">
           {zones.map((zone) => (
-            <li
-              key={zone.code}
-              className="rounded-md border border-zinc-200 px-3 py-2 text-sm"
-            >
-              <span className="font-medium">{zone.name}</span>
-              <span className="text-zinc-500"> &middot; {zone.code}</span>
-              <span className="block text-xs text-zinc-500">
+            <li key={zone.code} className="rounded-box border border-base-300 px-3 py-2 text-sm">
+              <span className="font-medium">{zone.name}</span>{" "}
+              <span className="text-base-content/50">{zone.code}</span>
+              <span className="block text-xs text-base-content/50">
                 {zone.corridors.map((corridor) => corridor.code).join(", ")}
               </span>
             </li>
@@ -134,9 +139,9 @@ export default function DashboardPage() {
         </ul>
       </section>
 
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-base-content/50">
         Back to the{" "}
-        <Link className="underline" href="/">
+        <Link className="link" href="/">
           overview
         </Link>
       </p>

@@ -1,4 +1,4 @@
-export type Role = 'passenger' | 'driver';
+export type Role = "passenger" | "driver";
 
 export type SessionUser = {
   id: string;
@@ -8,23 +8,16 @@ export type SessionUser = {
   teslaPayBalancePoysha: number;
 };
 
-export type AuthSession = {
-  accessToken: string;
-  tokenType: 'Bearer';
+/** The login response body carries no token - it travels in an httpOnly cookie. */
+export type LoginResponse = {
+  message: string;
   expiresInSeconds: number;
   user: SessionUser;
 };
 
-export type RegisterInput = {
-  name: string;
-  email: string;
-  password: string;
-  role: Role;
-};
-
-export type LoginInput = {
-  email: string;
-  password: string;
+export type RegisterResponse = {
+  message: string;
+  user: SessionUser;
 };
 
 export type Zone = {

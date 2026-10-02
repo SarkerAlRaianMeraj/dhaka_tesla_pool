@@ -4,77 +4,87 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import {
-  AuthCard,
   FormError,
   PrimaryButton,
   TextInput,
 } from "@/components/form-controls";
-import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { getErrorMessage } from "@/lib/apiClient";
+import { firstIssue, loginSchema, type LoginData } from "@/lib/schemas";
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<string | undefined>(undefined);
   const [pending, setPending] = useState(false);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+    e.preventDefault();
+
+    const result = loginSchema.safeParse({ email, password });
+    if (!result.success) {
+      setError(firstIssue(result.error));
+      return;
+    }
+
+    const data: LoginData = result.data;
     setError(undefined);
     setPending(true);
     try {
-      await login({ email, password });
-      // The dashboard decides what to show from the role in the token, so there
+      await login(data);
+      // The dashboard decides what to render from the role in the cookie, so there
       // is no role-specific redirect here to keep in sync.
       router.push("/dashboard");
     } catch (caught) {
       setError(
-        caught instanceof ApiError
-          ? caught.message
-          : "Could not reach the API. Is the backend running on port 3000?",
+        getErrorMessage(
+          caught,
+          "Could not reach the API. Is the backend running on port 3000?",
+        ),
       );
     } finally {
       setPending(false);
     }
-  }
+  };
 
   return (
-    <AuthCard
-      title="Sign in"
-      subtitle="Pick up where you left off."
-      footer={
-        <>
-          New here?{" "}
-          <Link className="font-medium text-emerald-700 hover:underline" href="/register">
-            Create an account
-          </Link>
-        </>
-      }
-    >
-      <form className="flex flex-col gap-4" onSubmit={onSubmit}>
-        <TextInput
-          label="Email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-        <TextInput
-          label="Password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
-        <FormError>{error}</FormError>
-        <PrimaryButton pending={pending}>Sign in</PrimaryButton>
-      </form>
-    </AuthCard>
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-12">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+        <p className="text-sm text-base-content/70">
+          Pick up where you left off.
+        </p>
+      </div>
+      <div className="card bg-base-100 shadow-xl">
+        <form className="card-body flex flex-col gap-4" onSubmit={handleSubmit}>
+          <TextInput
+            label="Email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <TextInput
+            label="Password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <FormError>{error}</FormError>
+          <PrimaryButton pending={pending}>Sign in</PrimaryButton>
+        </form>
+      </div>
+      <p className="text-sm text-base-content/70">
+        New here?{" "}
+        <Link className="link link-primary" href="/register">
+          Create an account
+        </Link>
+      </p>
+    </main>
   );
 }
