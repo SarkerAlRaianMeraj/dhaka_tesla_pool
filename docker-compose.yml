@@ -4,13 +4,33 @@
 
 name: dhaka-tesla-pool
 
+# Both backend services run the exact same image, so it is built once and tagged.
+# migrate and api can therefore never drift apart.
+x-backend: &backend
+  build:
+    context: ./backend
+  image: dhaka-tesla-pool-api:latest
+
+x-backend-env: &backend-env
+  NODE_ENV: ${NODE_ENV:-development}
+  DATABASE_HOST: ${DATABASE_HOST:-db}
+  DATABASE_PORT: ${DATABASE_PORT:-5432}
+  DATABASE_USER: ${DATABASE_USER:-postgres}
+  DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (copy .env.example)}
+  DATABASE_NAME: ${POSTGRES_DB:-dhaka_tesla_pool}
+  DATABASE_SSL: ${DATABASE_SSL:-false}
+  JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (copy .env.example)}
+  JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1d}
+  CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
+  SEED_DEMO_SCENARIO: ${SEED_DEMO_SCENARIO:-false}
+
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (copy .env.example)}
       POSTGRES_DB: ${POSTGRES_DB:-dhaka_tesla_pool}
     ports:
       - "5432:5432"
@@ -26,20 +46,8 @@ services:
   # API replicas can never run migrations concurrently, and so a migration
   # failure stops the stack instead of being logged and ignored.
   migrate:
-    build:
-      context: ./backend
-    environment:
-      NODE_ENV: ${NODE_ENV:-development}
-      DATABASE_HOST: ${DATABASE_HOST:-db}
-      DATABASE_PORT: ${DATABASE_PORT:-5432}
-      DATABASE_USER: ${DATABASE_USER:-postgres}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-change-me}
-      DATABASE_NAME: ${DATABASE_NAME:-dhaka_tesla_pool}
-      DATABASE_SSL: ${DATABASE_SSL:-false}
-      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string-at-least-32-chars}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1d}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
-      SEED_DEMO_SCENARIO: ${SEED_DEMO_SCENARIO:-false}
+    <<: *backend
+    environment: *backend-env
     command: ["node", "dist/database/migrate.js", "run"]
     depends_on:
       db:
@@ -47,22 +55,11 @@ services:
     restart: "no"
 
   api:
-    build:
-      context: ./backend
+    <<: *backend
     restart: unless-stopped
     environment:
-      NODE_ENV: ${NODE_ENV:-development}
+      <<: *backend-env
       PORT: 3000
-      DATABASE_HOST: ${DATABASE_HOST:-db}
-      DATABASE_PORT: ${DATABASE_PORT:-5432}
-      DATABASE_USER: ${DATABASE_USER:-postgres}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-change-me}
-      DATABASE_NAME: ${DATABASE_NAME:-dhaka_tesla_pool}
-      DATABASE_SSL: ${DATABASE_SSL:-false}
-      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-string-at-least-32-chars}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1d}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
-      SEED_DEMO_SCENARIO: ${SEED_DEMO_SCENARIO:-false}
     ports:
       - "${API_PORT:-3000}:3000"
     depends_on:
