@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# environment / secrets — never commit real values
+.env
+.env.*
+!.env.example
+
+# test output
+coverage/
+.nyc_output/
+
+# logs
+*.log
+npm-debug.log*
+yarn-error.log*
+logs/
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
