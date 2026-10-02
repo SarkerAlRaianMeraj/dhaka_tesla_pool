@@ -11,14 +11,13 @@ import { Repository } from 'typeorm';
 import { parseDurationSeconds } from '../../config/duration';
 import { User } from '../users/user.entity';
 import {
-  AuthSessionView,
   AuthUserView,
   RegisteredUserView,
   TokenClaims,
   toAuthUserView,
 } from './auth.types';
+import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
 import { PasswordService } from './password.service';
 
 @Injectable()
@@ -26,35 +25,37 @@ export class AuthService {
   private readonly tokenLifetimeSeconds: number;
 
   constructor(
-    @InjectRepository(User) private readonly users: Repository<User>,
-    private readonly passwords: PasswordService,
-    private readonly jwt: JwtService,
-    config: ConfigService,
+    @InjectRepository(User) private readonly usersRepository: Repository<User>,
+    private readonly passwordService: PasswordService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {
-    // The response reports the same lifetime the token was signed with, so a
-    // client never has to guess when to refresh.
+    // The login response reports the same lifetime the token was signed with, so
+    // a client never has to guess when to refresh.
     this.tokenLifetimeSeconds = parseDurationSeconds(
-      config.getOrThrow<string>('jwt.expiresIn'),
+      this.configService.getOrThrow<string>('jwt.expiresIn'),
     );
   }
 
-  async register(dto: RegisterDto): Promise<RegisteredUserView> {
-    const email = normaliseEmail(dto.email);
-    if (await this.users.findOne({ where: { email } })) {
+  async registerUser(
+    createUserDto: CreateUserDto,
+  ): Promise<RegisteredUserView> {
+    const email = createUserDto.email.trim().toLowerCase();
+    if (await this.usersRepository.findOne({ where: { email } })) {
       // The check plus the unique index is deliberate: the index is what actually
       // guarantees uniqueness, this only exists to return a clean 409 instead of a
       // driver error when two people register in the same instant.
       throw new ConflictException('An account with this email already exists');
     }
 
-    const user = this.users.create({
-      name: dto.name.trim(),
+    const user = this.usersRepository.create({
+      name: createUserDto.name.trim(),
       email,
-      role: dto.role,
-      passwordHash: await this.passwords.hash(dto.password),
+      role: createUserDto.role,
+      passwordHash: await this.passwordService.hash(createUserDto.password),
       teslaPayBalancePoysha: 0,
     });
-    const saved = await this.users.save(user);
+    const saved = await this.usersRepository.save(user);
 
     return {
       message: 'Account created. You can sign in now.',
@@ -62,11 +63,15 @@ export class AuthService {
     };
   }
 
-  async login(dto: LoginDto): Promise<AuthSessionView> {
-    const email = normaliseEmail(dto.email);
+  /** Verifies the credentials and returns the signed token; the controller puts
+   * it in an httpOnly cookie rather than in the response body (D15). */
+  async login(
+    loginDto: LoginDto,
+  ): Promise<{ token: string; user: AuthUserView }> {
+    const email = loginDto.email.trim().toLowerCase();
     // `passwordHash` is `select: false` on the entity, so it has to be requested
     // explicitly. This is the only query in the app that reads that column.
-    const user = await this.users
+    const user = await this.usersRepository
       .createQueryBuilder('user')
       .addSelect('user.passwordHash')
       .where('user.email = :email', { email })
@@ -75,28 +80,36 @@ export class AuthService {
     // One message for "no such account" and "wrong password" alike: telling them
     // apart would confirm which addresses are registered.
     const valid = user
-      ? await this.passwords.verify(dto.password, user.passwordHash)
+      ? await this.passwordService.verify(loginDto.password, user.passwordHash)
       : false;
     if (!user || !valid) {
       throw new UnauthorizedException('Email or password is incorrect');
     }
 
     return {
-      accessToken: await this.signToken(user),
-      tokenType: 'Bearer',
-      expiresInSeconds: this.tokenLifetimeSeconds,
+      token: await this.signToken(user),
       user: toAuthUserView(user),
     };
   }
 
   /** Re-reads the caller from the database instead of echoing the JWT back, so a
    * changed name or TeslaPay balance shows up immediately (NFR-1). */
-  async profile(userId: string): Promise<AuthUserView> {
-    const user = await this.users.findOne({ where: { id: userId } });
+  async getProfileByUserId(userId: string): Promise<AuthUserView> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('Account no longer exists');
     }
     return toAuthUserView(user);
+  }
+
+  getTokenLifetimeSeconds(): number {
+    return this.tokenLifetimeSeconds;
+  }
+
+  /** True in production only, so the cookie is not sent over plain HTTP in
+   * development where the app runs on localhost. */
+  isSecureCookie(): boolean {
+    return this.configService.get<string>('app.env') === 'production';
   }
 
   private async signToken(user: User): Promise<string> {
@@ -106,10 +119,6 @@ export class AuthService {
       name: user.name,
       role: user.role,
     };
-    return this.jwt.signAsync(claims);
+    return this.jwtService.signAsync(claims);
   }
-}
-
-function normaliseEmail(email: string): string {
-  return email.trim().toLowerCase();
 }

@@ -17,6 +17,8 @@
 | D11 | TeslaPay balance stored on `users` rather than a separate wallets table | to expand in Phase 6 |
 | D12 | One active pool per Tesla, enforced by a partial unique index | settled, applied in Phase 4 |
 | D13 | Fixed lock order and a transaction-manager rule for seat claims | settled, applied in Phase 4 |
+| D14 | bcrypt via `bcryptjs` instead of the native binding | settled, applied in Phase 1 |
+| D15 | JWT delivered as an httpOnly cookie, Bearer header kept as a fallback | settled, applied in Phase 1 |
 
 ## Why the obvious alternatives were rejected
 
@@ -44,11 +46,19 @@ A row lock protects only the rows it is taken on, inside the transaction that to
 - **Fix, both parts:** seat claims go through a single function; every read and write in it uses the transaction manager; and locks are always acquired **pool row first, then ride request** — one global order, so no cycle can form.
 - **Alternative considered:** `SERIALIZABLE` isolation for the claim transaction, letting the database abort conflicts instead of waiting. Correct, but it converts contention into failed requests that must be retried. Revisit if p99 latency under load becomes a problem.
 
-### D14 — The JWT lives in `localStorage`, not an httpOnly cookie
-The brief asks for a single-page-style frontend, and keeping the token in `localStorage` makes a browser refresh keep the session, works identically on every route, and needs no cookie/CORS credential handling for the MVP. The cost is real: any script that runs on the page can read the token, so an XSS bug becomes a session theft.
+### D14 — Password hashing: bcrypt, in the pure-JavaScript build
+`backend/rules.md` specifies bcrypt. `bcryptjs` implements the same algorithm in JavaScript rather than as a native addon, because the submission has to build and run on a machine with nothing but Node installed — a native `bcrypt` needs a compiler toolchain and a rebuild after every Node upgrade. The hashes are identical in format and strength; only the implementation differs.
 
-- **Why it is acceptable now:** the token is short-lived (`JWT_EXPIRES_IN`), the API authorises on the role claim only, and a stolen token cannot reach another passenger's data (NFR-1 is enforced server-side, not by hiding the token).
-- **What production would do:** an httpOnly, Secure, SameSite cookie issued by the API, with the token never readable from JavaScript. That change is confined to `frontend/src/lib/session-store.ts` and one NestJS strategy, which is why the session was written as one store module instead of scattered `localStorage` calls.
+- **Cost:** `bcryptjs` is roughly 30-40% slower than the native binding at 10 rounds. That is irrelevant at MVP traffic and irrelevant to correctness.
+- **Note:** bcrypt reads at most 72 bytes of a password, so the DTO caps the length at 72 characters. Silently ignoring the rest would make two different long passwords interchangeable.
+
+### D15 — The JWT is an httpOnly cookie, with `Authorization: Bearer` kept as a fallback
+An earlier draft kept the token in `localStorage` and accepted the XSS exposure. `frontend/rules.md` requires an httpOnly cookie that client JavaScript never reads, and it is also the better design: a token that script cannot read cannot be exfiltrated by a script injection bug. The login response therefore carries no token at all — only the user and the lifetime — and the browser holds it in `access_token` (`httpOnly`, `SameSite=Lax`, `Secure` in production, `Path=/`).
+
+- **CSRF:** `SameSite=Lax` already blocks the browser from attaching this cookie to a cross-site `POST`, and the API only accepts JSON bodies with an explicit content type, so no separate CSRF token is needed for this MVP. Documented rather than assumed.
+- **CORS:** the browser will only store and send the cookie if the response carries `Access-Control-Allow-Credentials`, so the client sets `withCredentials: true` and the API keeps an explicit origin list. `origin: true` was rejected because it reflects any origin *and* pairs it with credentials.
+- **Scripts keep working:** the guard accepts `Authorization: Bearer <token>` when no cookie is present, so `curl`, Postman, and the demonstration scripts work without a cookie jar. When both are present the cookie wins.
+- **Cost:** SSR cannot call authenticated endpoints, because the browser's cookie is not available to the Next.js server. Authenticated pages are therefore client-rendered, which also matches the rendering-strategy table in `frontend/rules.md` (dashboards are CSR).
 
 ## Trade-offs we are knowingly accepting
 

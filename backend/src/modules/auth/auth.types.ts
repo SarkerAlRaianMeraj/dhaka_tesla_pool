@@ -1,5 +1,3 @@
-import { Role } from '../../common/enums/role.enum';
-
 /**
  * Response shapes for the auth module. The API returns these narrow views instead
  * of the `User` entity, so `passwordHash` cannot leak by accident: the column is
@@ -13,9 +11,12 @@ export type AuthUserView = {
   teslaPayBalancePoysha: number;
 };
 
-export type AuthSessionView = {
-  accessToken: string;
-  tokenType: 'Bearer';
+/**
+ * The token is deliberately absent (D15): it travels in an httpOnly cookie that
+ * JavaScript cannot read, so the body carries only what a UI needs to render.
+ */
+export type LoginResponseView = {
+  message: string;
   expiresInSeconds: number;
   user: AuthUserView;
 };
@@ -37,7 +38,7 @@ export function toAuthUserView(user: {
   id: string;
   name: string;
   email: string;
-  role: Role | string;
+  role: string;
   teslaPayBalancePoysha: number;
 }): AuthUserView {
   return {
@@ -45,6 +46,8 @@ export function toAuthUserView(user: {
     name: user.name,
     email: user.email,
     role: user.role,
+    // `numeric` columns arrive as strings in PostgreSQL, so this normalises the
+    // type the API promises to the type the client receives.
     teslaPayBalancePoysha: Number(user.teslaPayBalancePoysha),
   };
 }

@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
@@ -17,8 +18,15 @@ async function bootstrap(): Promise<void> {
 
   app.setGlobalPrefix('api/v1');
   app.use(helmet());
+  // Reads the httpOnly session cookie. `cookie-parser` is not Express middleware
+  // that Nest wraps for us, so it is registered explicitly.
+  app.use(cookieParser());
   app.enableCors({
     origin: corsOrigin.split(','),
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    // Required for the browser to send and store the session cookie. The origin
+    // list above stays explicit, because `origin: true` would reflect any origin
+    // and pair it with credentials.
     credentials: true,
   });
   app.useGlobalPipes(

@@ -1,49 +1,27 @@
-import {
-  randomBytes,
-  scrypt as scryptCallback,
-  timingSafeEqual,
-} from 'node:crypto';
-import { promisify } from 'node:util';
 import { Injectable } from '@nestjs/common';
-
-const scrypt: (
-  password: string,
-  salt: string,
-  keylen: number,
-) => Promise<Buffer> = promisify(scryptCallback);
+import * as bcrypt from 'bcryptjs';
 
 /**
- * Password hashing on top of `node:crypto` only.
+ * Password hashing with bcrypt, as required by `backend/rules.md`.
  *
- * scrypt is memory-hard, ships in the standard library, and adds no native build
- * step — the submission has to run on an evaluator's machine with nothing but
- * Node installed. `bcrypt` would be an equally reasonable choice; both are
- * "slow on purpose" so a stolen table cannot be attacked at billions of guesses
- * per second.
+ * `bcryptjs` is the pure-JavaScript build of the same algorithm, chosen over the
+ * native `bcrypt` package because the submission has to build and run on a machine
+ * with nothing but Node installed — no compiler toolchain, no rebuild after a
+ * Node upgrade.
+ *
+ * Ten rounds is the standard default: roughly 60-100ms per hash on typical server
+ * hardware, which is slow on purpose, since a stolen table is attacked at guesses
+ * per second and not per hash.
  */
-const KEY_LENGTH = 64;
-const SALT_LENGTH = 16;
+const SALT_ROUNDS = 10;
 
 @Injectable()
 export class PasswordService {
   async hash(password: string): Promise<string> {
-    const salt = randomBytes(SALT_LENGTH).toString('hex');
-    const derived = await scrypt(password, salt, KEY_LENGTH);
-    return `scrypt:${salt}:${derived.toString('hex')}`;
+    return bcrypt.hash(password, SALT_ROUNDS);
   }
 
   async verify(password: string, stored: string): Promise<boolean> {
-    const [algorithm, salt, hash] = stored.split(':');
-    if (algorithm !== 'scrypt' || !salt || !hash) {
-      return false;
-    }
-
-    const expected = Buffer.from(hash, 'hex');
-    const actual = await scrypt(password, salt, expected.length);
-    // Constant-time compare: a length or content mismatch must not leak how much
-    // of a guess was correct.
-    return (
-      expected.length === actual.length && timingSafeEqual(expected, actual)
-    );
+    return bcrypt.compare(password, stored);
   }
 }
