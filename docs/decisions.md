@@ -44,6 +44,12 @@ A row lock protects only the rows it is taken on, inside the transaction that to
 - **Fix, both parts:** seat claims go through a single function; every read and write in it uses the transaction manager; and locks are always acquired **pool row first, then ride request** — one global order, so no cycle can form.
 - **Alternative considered:** `SERIALIZABLE` isolation for the claim transaction, letting the database abort conflicts instead of waiting. Correct, but it converts contention into failed requests that must be retried. Revisit if p99 latency under load becomes a problem.
 
+### D14 — The JWT lives in `localStorage`, not an httpOnly cookie
+The brief asks for a single-page-style frontend, and keeping the token in `localStorage` makes a browser refresh keep the session, works identically on every route, and needs no cookie/CORS credential handling for the MVP. The cost is real: any script that runs on the page can read the token, so an XSS bug becomes a session theft.
+
+- **Why it is acceptable now:** the token is short-lived (`JWT_EXPIRES_IN`), the API authorises on the role claim only, and a stolen token cannot reach another passenger's data (NFR-1 is enforced server-side, not by hiding the token).
+- **What production would do:** an httpOnly, Secure, SameSite cookie issued by the API, with the token never readable from JavaScript. That change is confined to `frontend/src/lib/session-store.ts` and one NestJS strategy, which is why the session was written as one store module instead of scattered `localStorage` calls.
+
 ## Trade-offs we are knowingly accepting
 
 1. **Denormalised pool capacity (D10):** occupancy can drift from the Tesla's current capacity if a capacity were ever editable. It is fixed at registration, so the drift cannot occur today; a trigger would remove the assumption if that ever changes.

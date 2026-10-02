@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const cast = [
   {
     name: "Jashim",
@@ -49,13 +51,33 @@ export default function Home() {
         ))}
       </section>
 
-      <section className="rounded-lg border border-dashed border-zinc-300 p-4 text-sm text-zinc-600">
-        <p className="font-medium text-zinc-800">Phase 0 &mdash; scaffold</p>
-        <p className="mt-1">
-          The passenger and driver apps arrive in later phases. The API runs on{" "}
-          <code className="rounded bg-zinc-100 px-1 py-0.5">/api/v1</code> and answers{" "}
-          <code className="rounded bg-zinc-100 px-1 py-0.5">/api/v1/health</code>.
-        </p>
+      <section className="rounded-lg border border-zinc-200 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-zinc-800">
+              Phase 1 &mdash; identity and reference data
+            </p>
+            <p className="mt-1 text-sm text-zinc-600">
+              Sign up as a passenger or a driver, sign in, and land on a home screen
+              chosen by the role in your token. The eight zones come from the API,
+              not from this page.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Link
+              href="/login"
+              className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+            >
+              Create account
+            </Link>
+          </div>
+        </div>
       </section>
     </main>
   );

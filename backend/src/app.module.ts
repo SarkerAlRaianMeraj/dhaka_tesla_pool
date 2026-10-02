@@ -1,10 +1,17 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AppConfiguration, buildConfiguration } from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { HealthModule } from './health/health.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { ZonesModule } from './modules/zones/zones.module';
 
 export const configurationFactory = (): AppConfiguration =>
   buildConfiguration(validateEnv(process.env));
@@ -29,14 +36,22 @@ export const configurationFactory = (): AppConfiguration =>
           ? { rejectUnauthorized: false }
           : false,
         autoLoadEntities: true,
+        // Schema only ever changes through a reviewed migration; `synchronize`
+        // would happily rewrite tables and is the classic way to lose data.
         synchronize: false,
       }),
     }),
     HealthModule,
+    AuthModule,
+    ZonesModule,
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(RequestIdMiddleware).forRoutes('*');
+    // `*path` rather than `*`: the newer path-to-regexp requires a named
+    // wildcard, and `*` only still works through an auto-conversion warning.
+    consumer
+      .apply(RequestIdMiddleware)
+      .forRoutes({ path: '*path', method: RequestMethod.ALL });
   }
 }
