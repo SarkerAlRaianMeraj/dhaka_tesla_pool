@@ -10,8 +10,8 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AppConfiguration, buildConfiguration } from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { HealthModule } from './health/health.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { ZonesModule } from './modules/zones/zones.module';
+import { AuthModule } from './auth/auth.module';
+import { ZoneModule } from './zone/zone.module';
 
 export const configurationFactory = (): AppConfiguration =>
   buildConfiguration(validateEnv(process.env));
@@ -43,7 +43,7 @@ export const configurationFactory = (): AppConfiguration =>
     }),
     HealthModule,
     AuthModule,
-    ZonesModule,
+    ZoneModule,
   ],
 })
 export class AppModule implements NestModule {

@@ -1,6 +1,6 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { ZoneView, ZonesService } from './zones.service';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { ZoneView, ZoneService } from './zone.service';
 
 /**
  * Public within an authenticated session but still guarded: the zone list is
@@ -8,11 +8,11 @@ import { ZoneView, ZonesService } from './zones.service';
  */
 @Controller('zones')
 @UseGuards(JwtAuthGuard)
-export class ZonesController {
-  constructor(private readonly zones: ZonesService) {}
+export class ZoneController {
+  constructor(private readonly zoneService: ZoneService) {}
 
   @Get()
   list(): Promise<ZoneView[]> {
-    return this.zones.list();
+    return this.zoneService.list();
   }
 }

@@ -19,11 +19,11 @@ export type ZoneView = {
  * nothing today.
  */
 @Injectable()
-export class ZonesService {
+export class ZoneService {
   private cache: ZoneView[] | null = null;
 
   constructor(
-    @InjectRepository(Zone) private readonly zones: Repository<Zone>,
+    @InjectRepository(Zone) private readonly zoneRepository: Repository<Zone>,
   ) {}
 
   async list(): Promise<ZoneView[]> {
@@ -59,7 +59,7 @@ export class ZonesService {
   private async load(): Promise<ZoneView[]> {
     // The ManyToMany join resolves to Corridor rows directly, so one query is
     // enough — no second lookup table to stitch together.
-    const zoneRows = await this.zones.find({
+    const zoneRows = await this.zoneRepository.find({
       relations: { corridors: true },
       order: { code: 'ASC' },
     });

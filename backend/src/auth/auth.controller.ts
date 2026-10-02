@@ -9,9 +9,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import type { AuthenticatedUser } from '../../common/auth/authenticated-user';
-import { CurrentUser } from '../../common/auth/authenticated-user';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import type { AuthenticatedUser } from '../common/auth/authenticated-user';
+import { CurrentUser } from '../common/auth/authenticated-user';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { ACCESS_TOKEN_COOKIE } from './auth.cookie';
 import { AuthService } from './auth.service';
 import {

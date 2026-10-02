@@ -8,7 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { AuthenticatedUser } from '../auth/authenticated-user';
 import { isRole } from '../enums/role.enum';
-import { ACCESS_TOKEN_COOKIE } from '../../modules/auth/auth.cookie';
+import { ACCESS_TOKEN_COOKIE } from '../../auth/auth.cookie';
 
 export type JwtPayload = {
   sub: string;

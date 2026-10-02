@@ -8,8 +8,8 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { parseDurationSeconds } from '../../config/duration';
-import { User } from '../users/user.entity';
+import { parseDurationSeconds } from '../config/duration';
+import { User } from '../user/user.entity';
 import {
   AuthUserView,
   RegisteredUserView,

@@ -6,7 +6,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { Role } from '../../../common/enums/role.enum';
+import { Role } from '../../common/enums/role.enum';
 
 /**
  * Sign-up for both roles. The brief's actors are all Dhaka residents with an

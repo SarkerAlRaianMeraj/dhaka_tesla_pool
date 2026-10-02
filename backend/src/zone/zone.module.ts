@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthCoreModule } from '../../common/auth/auth-core.module';
+import { AuthCoreModule } from '../common/auth/auth-core.module';
 import { Corridor } from './corridor.entity';
 import { Zone } from './zone.entity';
 import { ZoneCorridor } from './zone-corridor.entity';
-import { ZonesController } from './zones.controller';
-import { ZonesService } from './zones.service';
+import { ZoneController } from './zone.controller';
+import { ZoneService } from './zone.service';
 
 @Module({
   // `Corridor` and `ZoneCorridor` are registered even though nothing queries them
@@ -15,8 +15,8 @@ import { ZonesService } from './zones.service';
     TypeOrmModule.forFeature([Zone, Corridor, ZoneCorridor]),
     AuthCoreModule,
   ],
-  controllers: [ZonesController],
-  providers: [ZonesService],
-  exports: [ZonesService],
+  controllers: [ZoneController],
+  providers: [ZoneService],
+  exports: [ZoneService],
 })
-export class ZonesModule {}
+export class ZoneModule {}
