@@ -4,6 +4,8 @@
 
 A ride-pooling MVP: passengers request multi-seat rides, a driver's Tesla can serve several passengers on compatible routes at once, and each passenger sees only their own fare and status.
 
+> **Repository authorship.** The first 23 commits, up to and including the Phase 1 course-standards merge, were authored under a second GitHub account (`sania1234567890`) used during early development. Every commit from this point on is authored by `SarkerAlRaianMeraj`. History was deliberately not rewritten, because re-authoring would have invalidated every existing commit hash and the merge structure for no benefit to the code.
+
 > **Project status — Phase 1 of 10 complete (identity and zones).** Sign up, sign in, and land on a role-aware home screen; the eight Dhaka zones are served by the API. Ride requests, pooling, and the driver's Tesla registration land in the following phases. See [`PROJECT_PLAN.md`](PROJECT_PLAN.md) for the phase-by-phase delivery plan and its acceptance gates.
 >
 > *How Phase 1 was verified:* both apps build and lint clean; the session cookie flow is exercised end to end against a live API (login sets the cookie, `/auth/me` answers while it is held, logout revokes it, a bad `Authorization` header is refused); every route returns its expected status and the custom 404 renders inside the app shell; and the built client bundle is confirmed to call `/auth/login`, `/auth/me`, `/auth/logout`, and `/zones` with credentials. The interactive browser pass of the sign-up → sign-in → dashboard path is still to be recorded by hand.
