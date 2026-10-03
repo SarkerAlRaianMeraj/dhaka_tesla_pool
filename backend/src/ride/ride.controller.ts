@@ -11,7 +11,10 @@ import {
 } from '@nestjs/common';
 import type { AuthenticatedUser } from '../common/auth/authenticated-user';
 import { CurrentUser } from '../common/auth/authenticated-user';
+import { Roles } from '../common/decorators/roles.decorator';
+import { Role } from '../common/enums/role.enum';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
 import { CreateRideRequestDto } from './dto/create-ride-request.dto';
 import { QuoteRideDto } from './dto/quote-ride.dto';
 import { RideService } from './ride.service';
@@ -25,7 +28,12 @@ import { QuoteView, RideView } from './ride.types';
  * added later without the decorator would then be public by omission.
  */
 @Controller('rides')
-@UseGuards(JwtAuthGuard)
+// Order is load-bearing: `JwtAuthGuard` populates `request.user`, which is what
+// `RolesGuard` then reads. Reversed, an unauthenticated caller would be told 403
+// ("you are the wrong role") instead of 401 ("you are nobody"), which both
+// misdescribes the problem and confirms that the route exists to a stranger.
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.Passenger)
 export class RideController {
   constructor(private readonly rideService: RideService) {}
 
