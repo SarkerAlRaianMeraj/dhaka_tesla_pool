@@ -27,6 +27,8 @@ The course standards (`backend/rules.md`, `frontend/rules.md`) are the source of
 | D19 | Tailwind 4 CSS-first configuration, no `tailwind.config.ts` | settled, applied in Phase 1 |
 | D20 | The web app runs on port 3001, not the standard 3000 | settled, applied in Phase 1 |
 | D21 | Identity is owned by the auth module, so `src/user/` holds only the entity | settled, applied in Phase 1 |
+| D22 | Ride zones are UUID foreign keys, not code strings | settled, applied in Phase 2 |
+| D23 | The sharing discount floors to whole poysha | settled, applied in Phase 2 |
 
 ## Why the obvious alternatives were rejected
 
@@ -118,6 +120,20 @@ Each of these contradicts a specific line in `backend/rules.md` or `frontend/rul
 - **Why:** creating a `UserController` and `UserService` with no endpoints of their own would be scaffolding written to satisfy a folder shape rather than to serve a requirement. `auth.service.ts` is where a user is actually created and read.
 - **Cost:** a reader looking for user endpoints under `src/user/` will not find them; the answer is one hop away in `src/auth/`, which `auth.module.ts` imports by entity path.
 - **Alternative considered:** a real `user` module owning `GET /users/me`. Rejected for now — it would split identity across two modules for one endpoint, and Phase 6 (TeslaPay balance, rating history) is the point at which a user module earns its existence.
+
+### D22 — Ride zones are UUID foreign keys, not code strings
+The SRS conceptual model shows `RIDE_REQUEST.pickupZone` and `destinationZone` as strings. The schema stores two `uuid` columns with foreign keys to `zones`.
+
+- **Why:** FR-DB1 requires proper relationships, constraints, and indexes throughout, and a string column cannot enforce that a zone exists. The SRS itself notes the physical schema is an implementation deliverable rather than something it fixes. Foreign keys also make "Banani" a single row that cannot drift in spelling between two requests.
+- **Cost:** every read of a ride needs the zone relation loaded, or a join. The alternative — a denormalised copy of the zone name for display — would reintroduce the drift this avoids.
+- **Note:** the API still *accepts* zone codes, because that is what a client has; the service resolves a code to a row and the request stores the row's id.
+
+### D23 — The sharing discount floors to whole poysha
+The 20% discount is `distanceCharge / 5`. When the distance charge is not divisible by 5, the PRD does not say which way to round, and the two obvious answers genuinely disagree: for a charge of 3 poysha, `Math.floor` gives 0 and `Math.round` gives 1.
+
+- **Chosen:** `Math.floor`. The discount is something taken *off* a passenger's fare, so rounding it down never overcharges, and the result stays exactly reproducible by hand — which is the property FR-F1 and NFR-6 actually ask for.
+- **Alternative considered:** `Math.round`, which is marginally more generous on average. Rejected because "we round in the passenger's favour here" is a sentence nobody should have to defend in a viva.
+- **Scope of the edge case:** for the published one-decimal zone grid every charge is a multiple of 100 and therefore divisible by 5, so this never actually triggers today. It is specified now so that changing a zone's coordinates later cannot silently change the rounding behaviour.
 
 ## Trade-offs we are knowingly accepting
 
