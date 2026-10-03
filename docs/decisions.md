@@ -153,6 +153,22 @@ The 20% discount is `distanceCharge / 5`. When the distance charge is not divisi
 - **Cost:** the contended path costs one extra read, and both cancellation messages now come from a single helper so the fast path and the race path cannot describe the same refusal differently.
 - **This is the template for Phase 4.** Whatever claims the last seat should likewise decide inside the statement that writes, not in a check that precedes it. The defect here was a corrupted audit trail, which is why it was demonstrated with eight concurrent requests against the live database rather than assumed from reading the code — and why Phase 9 formalises it as a test.
 
+### D26 — Driver setup gets its own `/tesla` route, with availability on the Tesla row
+`US-D2` ("I own exactly one Tesla with a fixed capacity") has no screen ID in `PRD_Dhaka_Tesla_Pool.md` §5.4; the screen table runs from D1 (sign in) straight to D2 (availability toggle and Tesla summary). So where registration lives is a judgement call, and it was decided rather than looked up.
+
+- **Chosen:** a dedicated `/tesla` route. Its empty state is the registration form; once a Tesla exists the same route becomes the summary plus the online/offline toggle, which is exactly what screen D2 describes. The driver's dashboard card links to it, mirroring the passenger card that links to `/rides/request`.
+- **Why not inline on the dashboard:** that card already exists and already says "arrives in phase 3" (`frontend/app/dashboard/page.tsx:116`), so the home for it is uncontroversial. But the dashboard also renders the zone list and the TeslaPay panel, and `PRD` §5.6 requires every screen to define its loading, error, and empty states — a form competing with unrelated content gives those states nowhere to live.
+- **Why not a sign-up step:** it would delay every new driver on the path to the feed, change the sign-up click-through that Phase 1 already verified, and walk a returning driver through a step they do not need.
+- **Availability is a status column on `teslas`,** not a separate table or a `driver` column. One driver owns exactly one Tesla, so the state has exactly one home, and error E2 ("driver goes offline with an assigned passenger") is a *guard* on that column rather than new state: the assignment survives, the ride stays `ACCEPTED`, and the passenger is told the driver is reconnecting.
+
+### D27 — The matching rule is pairwise, so Phase 3 ships the predicate and an unfiltered feed
+`PRD` §6.1 defines compatibility between two *requests*: "two requests may share one Tesla if and only if their pickup zones are identical AND their destination corridors overlap". A Tesla has a plate and a capacity and nothing else — no pickup zone. So with no active pool there is no anchor for a single request to be "compatible with", while `US-D3` still requires that non-matching requests be absent from the feed.
+
+- **Chosen:** Phase 3 delivers `canShare()` as a pure function, verified against the three worked examples in §6.1, and the driver feed lists `REQUESTED` rides. Pairwise exclusion is demonstrated in Phase 4, where an accepted request gives the comparison something to compare against.
+- **Why not invent an anchor now:** giving the Tesla a pickup zone at registration would contradict `US-D2`, which says registration provides plate and capacity. Seeding a second Tesla purely to watch a request disappear would add a driver arrangement the PRD's cast does not contain, to demonstrate something that becomes real for free one phase later.
+- **Why the predicate is written in Phase 3 even though the feed cannot use it yet:** corridor overlap is the one rule in the project with a genuinely counter-intuitive case. Mohakhali belongs to *both* `banani_gulshan` and `dhanmondi_farmgate`, and that single fact is the only reason Nusrat, Rafiq, and Shirin can share Bullet. An implementation that treats a destination as having one corridor is wrong in a way that stays invisible until Phase 4 tries to pool three real riders.
+- **Note:** a destination zone's corridor set is the input, not a single corridor. The rule is "exists a corridor containing destination A and a corridor containing destination B that share at least one zone".
+
 ## Trade-offs we are knowingly accepting
 
 1. **Denormalised pool capacity (D10):** occupancy can drift from the Tesla's current capacity if a capacity were ever editable. It is fixed at registration, so the drift cannot occur today; a trigger would remove the assumption if that ever changes.
