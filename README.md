@@ -67,6 +67,11 @@ docker compose up --build
 
 The stack brings up PostgreSQL, runs migrations as a one-shot service, then starts the API and the web app. API: `http://localhost:3000/api/v1` · Web: `http://localhost:3001`.
 
+The API refuses to boot when `NODE_ENV=production` and `JWT_SECRET` is still the
+`.env.example` placeholder or is shorter than 32 characters. Both of those values
+are published in this repository, so neither can safely sign a real session
+cookie (D24).
+
 ## Common commands
 
 | Command | Purpose |
