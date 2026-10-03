@@ -144,6 +144,15 @@ The 20% discount is `distanceCharge / 5`. When the distance charge is not divisi
 - **Cost:** the two published strings must be kept in step between `env.validation.ts` and `.env.example`. A renamed default silently stops being refused.
 - **Note on Compose:** `docker-compose.yml` already uses `${JWT_SECRET:?...}`, but that form refuses only an *absent* value, so it happily accepts a copied-but-unedited `.env.example`. The application-level check is the one that actually holds. Compose also defaults `NODE_ENV` to `development`, so a container only exercises this rule once the operator sets `NODE_ENV=production` — deliberate, because the production cookie sets `Secure` and would not be stored over the plain-HTTP local setup.
 
+### D25 — A single-entity state transition is a compare-and-set, not a checked write
+`RideService.cancel()` used to read a ride's status, confirm it was cancellable, and then write `CANCELLED` inside a transaction that re-checked nothing. Two simultaneous requests both observed `REQUESTED` and both committed, leaving two `REQUESTED -> CANCELLED` rows in the trail NFR-3 exists to make trustworthy.
+
+- **Chosen:** the expected status moves into the `WHERE` clause — `UPDATE ... WHERE id = ? AND status = <the status just validated>` — and `affected !== 1` means another writer won. The winner alone appends history; the loser re-reads so it can name the real current status instead of a stale reason.
+- **Why no pessimistic lock is needed:** Postgres takes a row lock for the second `UPDATE` and re-evaluates the predicate against the committed row at READ COMMITTED, so the loser updates nothing. The database arbitrates the race; application timing does not.
+- **Why this is not in tension with the pessimistic lock accepted for pool capacity (`AI_USAGE.md`):** seat claims contend for one shared occupancy counter, so several claimants genuinely serialise on a single row and a lock is the honest expression of that. A cancel touches one entity's own status, which nobody else is incrementing, so a conditional update says exactly what is true without serialising anything. Two mechanisms for two different problems, not a contradiction and not drift.
+- **Cost:** the contended path costs one extra read, and both cancellation messages now come from a single helper so the fast path and the race path cannot describe the same refusal differently.
+- **This is the template for Phase 4.** Whatever claims the last seat should likewise decide inside the statement that writes, not in a check that precedes it. The defect here was a corrupted audit trail, which is why it was demonstrated with eight concurrent requests against the live database rather than assumed from reading the code — and why Phase 9 formalises it as a test.
+
 ## Trade-offs we are knowingly accepting
 
 1. **Denormalised pool capacity (D10):** occupancy can drift from the Tesla's current capacity if a capacity were ever editable. It is fixed at registration, so the drift cannot occur today; a trigger would remove the assumption if that ever changes.

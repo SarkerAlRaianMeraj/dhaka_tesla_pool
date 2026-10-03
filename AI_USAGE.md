@@ -16,6 +16,16 @@ Disclosed per SRS §7.6 and the challenge brief §8: AI tools are permitted, mus
 |---|---|---|
 | 0 | Scaffold, compose topology, health probe, migration runner | Topology, ports, the local-PostgreSQL development stance |
 | 1 | Entity and migration code, auth endpoints and guards, the three screens, the axios client and Zod schemas | Every product rule; bcrypt over scrypt; the httpOnly cookie over `localStorage`; all departures from the course standards (D14–D21), each reviewed and recorded |
+| 2 | Fare rule as a pure function, the quote/create/list/cancel endpoints and their migration, the three ride screens, and a post-merge security review (below) | The fare model and its rounding (D23); zones as UUID foreign keys (D22); each audit finding and whether to fix it now or defer it |
+
+## Security review after Phase 2
+
+An AI-driven review of Phases 0–2 was run once Phase 2 had merged, and every finding was read, reproduced, and accepted or rejected by a human before anything was changed.
+
+- **Accepted and fixed:** the API would accept the published placeholder `JWT_SECRET` in production, because the only rule on it was a non-empty check that the default itself satisfied (D24); `RolesGuard` existed but was applied to nothing, leaving passenger-only endpoints open to drivers; and `cancel()` could let two concurrent requests both win, corrupting the status history (D25). All three were reproduced against the running system, not inferred from reading the code — the cancel defect was demonstrated by firing eight simultaneous requests and then re-confirmed by reverting the fix and watching it fail three times out of four.
+- **Rejected as not worth doing yet:** a global exception filter and rate limiting. Both are assigned to Phase 7 by `PROJECT_PLAN.md`, both change either the API contract or the dependency list, and doing them here would leave that phase with little to do.
+- **Deferred as needing a decision that is not the AI's to make:** a cap on how many open ride requests one passenger may hold (needs a limit value that appears nowhere in the PRD, plus a migration) and pagination on the ride list (an API contract change the frontend does not yet send). Both were raised with the human and parked.
+- **Accepted as a known limitation:** Docker Compose remains unverified on the development machine, as `PROJECT_PLAN.md` §"Docker truth" permits.
 
 ## What the AI did and did not decide
 
