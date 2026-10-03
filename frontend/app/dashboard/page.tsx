@@ -98,9 +98,16 @@ const DashboardPage = () => {
               <h2 className="card-title">Request a ride</h2>
               <p className="text-sm text-base-content/70">
                 Pick a pickup and destination, see the exact fare before you
-                commit, then watch the status change as drivers accept. Arrives in
-                phase 2.
+                commit, then watch the status change as drivers accept.
               </p>
+              <div className="card-actions">
+                <Link href="/rides/request" className="btn btn-primary btn-sm">
+                  Request a ride
+                </Link>
+                <Link href="/rides" className="btn btn-ghost btn-sm">
+                  Your rides
+                </Link>
+              </div>
             </div>
           </article>
         ) : (

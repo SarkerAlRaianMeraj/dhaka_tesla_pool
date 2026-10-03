@@ -11,6 +11,7 @@ import { AppConfiguration, buildConfiguration } from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
+import { RideModule } from './ride/ride.module';
 import { ZoneModule } from './zone/zone.module';
 
 export const configurationFactory = (): AppConfiguration =>
@@ -44,6 +45,7 @@ export const configurationFactory = (): AppConfiguration =>
     HealthModule,
     AuthModule,
     ZoneModule,
+    RideModule,
   ],
 })
 export class AppModule implements NestModule {

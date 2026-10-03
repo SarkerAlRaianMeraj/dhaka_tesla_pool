@@ -61,6 +61,24 @@ export const Navbar = () => {
                   {user.role === "driver" ? "Driver home" : "Passenger home"}
                 </Link>
               </li>
+              {/*
+                Rides are a passenger's screen. A driver has no rides to request
+                until Phase 3 gives them Tesla registration, so showing the link
+                would be offering an empty list.
+              */}
+              {user.role === "passenger" ? (
+                <li>
+                  <Link
+                    href="/rides"
+                    className={isActivePath(pathname, "/rides") ? "menu-active" : undefined}
+                    aria-current={
+                      isActivePath(pathname, "/rides") ? "page" : undefined
+                    }
+                  >
+                    Rides
+                  </Link>
+                </li>
+              ) : null}
               <li>
                 <span className="badge badge-outline badge-sm self-center">
                   {user.email}
