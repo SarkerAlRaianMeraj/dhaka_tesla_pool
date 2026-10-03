@@ -6,9 +6,15 @@ A ride-pooling MVP: passengers request multi-seat rides, a driver's Tesla can se
 
 > **Repository authorship.** The first 23 commits, up to and including the Phase 1 course-standards merge, were authored under a second GitHub account (`sania1234567890`) used during early development. Every commit from this point on is authored by `SarkerAlRaianMeraj`. History was deliberately not rewritten, because re-authoring would have invalidated every existing commit hash and the merge structure for no benefit to the code.
 
-> **Project status — Phase 1 of 10 complete (identity and zones).** Sign up, sign in, and land on a role-aware home screen; the eight Dhaka zones are served by the API. Ride requests, pooling, and the driver's Tesla registration land in the following phases. See [`PROJECT_PLAN.md`](PROJECT_PLAN.md) for the phase-by-phase delivery plan and its acceptance gates.
+> **Project status — Phase 2 of 10 complete (request and fare).** Sign up, sign in, and land on a role-aware home screen; the eight Dhaka zones are served by the API. A passenger can now price a journey, request a ride, list their rides, open one, and cancel it. Tesla registration, pooling, and the driver's availability model land in the following phases. See [`PROJECT_PLAN.md`](PROJECT_PLAN.md) for the phase-by-phase delivery plan and its acceptance gates.
 >
-> *How Phase 1 was verified:* both apps build and lint clean; the session cookie flow is exercised end to end against a live API (login sets the cookie, `/auth/me` answers while it is held, logout revokes it, a bad `Authorization` header is refused); every route returns its expected status and the custom 404 renders inside the app shell; and the built client bundle is confirmed to call `/auth/login`, `/auth/me`, `/auth/logout`, and `/zones` with credentials. The interactive browser pass of the sign-up → sign-in → dashboard path is still to be recorded by hand.
+> *How Phase 2 was verified:* both apps build and lint clean; the three fares PRD §6.2 publishes are produced exactly from the seeded zone coordinates (35700, 33000, and 37950 poysha, with 34560 pooled); `POST /rides/quote` was confirmed against the database to write no rows, repeatedly; the schema's constraints were confirmed behaviourally rather than by reading `CREATE TABLE`, so an unknown status, a same-zone request, and 9 seats are all refused by PostgreSQL itself; another passenger's ride returns 404 rather than 403, and cancelling twice returns 409. The interactive browser pass — register → sign in → dashboard → price → request → list → detail → cancel → sign out — was run in headless Chrome and every screen, fare, and status was confirmed against the rendered DOM, including that the session cookie is not readable by scripts.
+>
+> *Not yet verified:* Docker Compose, which cannot run on this machine and is deferred to Phase 8.
+
+### Phase 1, for the record
+
+> *How Phase 1 was verified:* both apps build and lint clean; the session cookie flow is exercised end to end against a live API (login sets the cookie, `/auth/me` answers while it is held, logout revokes it, a bad `Authorization` header is refused); every route returns its expected status and the custom 404 renders inside the app shell; and the built client bundle is confirmed to call `/auth/login`, `/auth/me`, `/auth/logout`, and `/zones` with credentials. The interactive browser pass of the sign-up → sign-in → dashboard path was left to be recorded by hand, and was later completed as part of the Phase 2 browser run.
 
 ## Repository layout
 
