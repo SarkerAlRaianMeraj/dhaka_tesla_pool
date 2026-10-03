@@ -5,6 +5,7 @@ import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { INSECURE_DEV_JWT_SECRET } from './config/env.validation';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -14,6 +15,15 @@ async function bootstrap(): Promise<void> {
   const corsOrigin = config.get<string>('app.corsOrigin');
   if (port === undefined || corsOrigin === undefined) {
     throw new Error('app.port and app.corsOrigin must be configured');
+  }
+
+  // Production refuses this secret outright, so reaching here means development
+  // or test. It is still worth shouting about: a developer who never opens .env
+  // would otherwise ship a publicly known signing key without realising it.
+  if (config.get<string>('jwt.secret') === INSECURE_DEV_JWT_SECRET) {
+    new Logger('Bootstrap').warn(
+      'JWT_SECRET is the built-in development secret. Anyone who has read this repository can forge a session cookie. Do not run a deployed instance this way.',
+    );
   }
 
   app.setGlobalPrefix('api/v1');

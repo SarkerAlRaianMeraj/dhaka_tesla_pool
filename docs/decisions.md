@@ -135,6 +135,15 @@ The 20% discount is `distanceCharge / 5`. When the distance charge is not divisi
 - **Alternative considered:** `Math.round`, which is marginally more generous on average. Rejected because "we round in the passenger's favour here" is a sentence nobody should have to defend in a viva.
 - **Scope of the edge case:** for the published one-decimal zone grid every charge is a multiple of 100 and therefore divisible by 5, so this never actually triggers today. It is specified now so that changing a zone's coordinates later cannot silently change the rounding behaviour.
 
+### D24 — Production refuses the published JWT secret instead of trusting the operator
+`backend/src/config/env.validation.ts` gives `JWT_SECRET` a built-in default so a fresh clone boots with no configuration. That default is a literal in this repository, so a deployment started with the variable unset would sign and verify every session with a key any reader already has, and could mint a valid `access_token` cookie for an arbitrary user id. The default is also long enough to satisfy a minimum-length rule, which is why length alone would never have caught it.
+
+- **Chosen:** the default remains available to development and test, and is refused **by identity** when `NODE_ENV=production`, together with the `.env.example` placeholder and any secret shorter than 32 characters. `main.ts` logs a warning whenever the built-in secret is in use.
+- **Why keep a default at all:** removing it would make the API refuse to boot on a fresh clone, converting a security control into an onboarding tax. The exposure is specific to production, so the rule is specific to production.
+- **Why identity and not just length:** both published values are longer than 32 characters, so a minimum-length check waves them straight through. Only comparing against the known values distinguishes a placeholder from a real secret.
+- **Cost:** the two published strings must be kept in step between `env.validation.ts` and `.env.example`. A renamed default silently stops being refused.
+- **Note on Compose:** `docker-compose.yml` already uses `${JWT_SECRET:?...}`, but that form refuses only an *absent* value, so it happily accepts a copied-but-unedited `.env.example`. The application-level check is the one that actually holds. Compose also defaults `NODE_ENV` to `development`, so a container only exercises this rule once the operator sets `NODE_ENV=production` — deliberate, because the production cookie sets `Secure` and would not be stored over the plain-HTTP local setup.
+
 ## Trade-offs we are knowingly accepting
 
 1. **Denormalised pool capacity (D10):** occupancy can drift from the Tesla's current capacity if a capacity were ever editable. It is fixed at registration, so the drift cannot occur today; a trigger would remove the assumption if that ever changes.

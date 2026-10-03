@@ -1,5 +1,10 @@
 import { buildConfiguration } from './configuration';
-import { NodeEnv, validateEnv } from './env.validation';
+import {
+  INSECURE_DEV_JWT_SECRET,
+  NodeEnv,
+  PLACEHOLDER_JWT_SECRET,
+  validateEnv,
+} from './env.validation';
 
 /**
  * The environment validator is the first thing that runs on boot and the last
@@ -61,6 +66,63 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ...validEnv, JWT_SECRET: '' })).toThrow(
       /JWT_SECRET/,
     );
+  });
+
+  describe('in production', () => {
+    const productionEnv = { ...validEnv, NODE_ENV: 'production' };
+
+    it('refuses the built-in development secret when JWT_SECRET is absent', () => {
+      expect(() =>
+        validateEnv({ ...productionEnv, JWT_SECRET: undefined }),
+      ).toThrow(/JWT_SECRET/);
+    });
+
+    it('refuses the built-in development secret when it is set explicitly', () => {
+      expect(() =>
+        validateEnv({ ...productionEnv, JWT_SECRET: INSECURE_DEV_JWT_SECRET }),
+      ).toThrow(/JWT_SECRET/);
+    });
+
+    it('refuses the placeholder shipped in .env.example', () => {
+      expect(() =>
+        validateEnv({ ...productionEnv, JWT_SECRET: PLACEHOLDER_JWT_SECRET }),
+      ).toThrow(/JWT_SECRET/);
+    });
+
+    it('refuses a secret too short to be unguessable', () => {
+      expect(() =>
+        validateEnv({ ...productionEnv, JWT_SECRET: 'a'.repeat(16) }),
+      ).toThrow(/at least 32 characters/);
+    });
+
+    it('accepts a real secret of sufficient length', () => {
+      const env = validateEnv({ ...productionEnv, JWT_SECRET: 'c'.repeat(48) });
+
+      expect(env.JWT_SECRET).toBe('c'.repeat(48));
+    });
+
+    it('reports decorator and relational failures in one message', () => {
+      let message = '';
+
+      try {
+        validateEnv({
+          ...productionEnv,
+          PORT: 'abc',
+          JWT_SECRET: PLACEHOLDER_JWT_SECRET,
+        });
+      } catch (error) {
+        message = (error as Error).message;
+      }
+
+      expect(message).toMatch(/PORT/);
+      expect(message).toMatch(/JWT_SECRET/);
+    });
+  });
+
+  it('still falls back to the development secret outside production', () => {
+    const env = validateEnv({ ...validEnv, JWT_SECRET: undefined });
+
+    expect(env.JWT_SECRET).toBe(INSECURE_DEV_JWT_SECRET);
   });
 
   it('treats a missing DATABASE_PASSWORD as empty rather than the string undefined', () => {
