@@ -150,33 +150,68 @@ export class RideService {
    * Refused once the trip has started: the passenger is already in the vehicle, and
    * the driver has driven to collect them. Cancelling at that point would strand
    * both of them.
+   *
+   * The transition is a compare-and-set rather than a checked write. Two taps on
+   * "cancel" can arrive at once, and reading the status first and then writing it
+   * would let both observe `REQUESTED` and both commit, leaving two
+   * `REQUESTED -> CANCELLED` rows in an audit trail that exists to be
+   * reconstructable (NFR-3). Deciding inside the `WHERE` clause hands the decision
+   * to the database: Postgres locks the row for the second writer and re-evaluates
+   * the predicate against the committed row, so the loser updates nothing and is
+   * told the current status. No pessimistic lock is needed for this (D25).
    */
   async cancel(rideId: string, passengerId: string): Promise<RideView> {
     const ride = await this.findOwnedEntity(rideId, passengerId);
 
     if (!isCancellableRideStatus(ride.status)) {
-      throw new ConflictException(
-        ride.status === RideStatus.STARTED
-          ? 'This ride has already started and can no longer be cancelled'
-          : `This ride is ${RIDE_STATUS_LABELS[ride.status]} and can no longer be cancelled`,
-      );
+      throw this.cancellationConflict(ride.status);
     }
 
-    const previousStatus = ride.status;
+    const fromStatus = ride.status;
 
     await this.dataSource.transaction(async (manager) => {
-      await manager.getRepository(Ride).update(ride.id, {
-        status: RideStatus.CANCELLED,
-      });
+      const { affected } = await manager
+        .getRepository(Ride)
+        .update(
+          { id: ride.id, status: fromStatus },
+          { status: RideStatus.CANCELLED },
+        );
+
+      if (affected !== 1) {
+        // The row no longer holds the status validated a moment ago, so a
+        // concurrent cancel (or a driver transition) won. Re-read rather than
+        // report a stale reason, so the message names the real current state.
+        const current = await manager
+          .getRepository(Ride)
+          .findOne({ where: { id: ride.id } });
+
+        throw this.cancellationConflict(
+          current?.status ?? RideStatus.CANCELLED,
+        );
+      }
 
       await manager.getRepository(RideStatusHistory).save({
         ride: { id: ride.id } as Ride,
-        fromStatus: previousStatus,
+        fromStatus,
         toStatus: RideStatus.CANCELLED,
       });
     });
 
     return this.findOneOwned(ride.id, passengerId);
+  }
+
+  /**
+   * The single wording for a refused cancellation.
+   *
+   * Shared by the upfront check and the race path so the two cannot drift apart
+   * and start describing the same refusal in two different ways.
+   */
+  private cancellationConflict(status: RideStatus): ConflictException {
+    return new ConflictException(
+      status === RideStatus.STARTED
+        ? 'This ride has already started and can no longer be cancelled'
+        : `This ride is ${RIDE_STATUS_LABELS[status]} and can no longer be cancelled`,
+    );
   }
 
   /**
