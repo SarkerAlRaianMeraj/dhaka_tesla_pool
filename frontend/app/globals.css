@@ -2,11 +2,86 @@
 
 /*
  * Tailwind 4 has no tailwind.config.js, so plugins are registered here with
- * `@plugin`. daisyUI 5 then reads its own theme variables off this file's
- * `--color-*` declarations when a theme is selected via `data-theme`.
+ * `@plugin`.
+ *
+ * `themes: false` is deliberate and load-bearing. Omitting the option is not the same
+ * as "no themes" - `pluginOptionsHandler` defaults to `["light --default",
+ * "dark --prefersdark"]`, so a bare `@plugin "daisyui"` silently ships stock `light`
+ * and `dark` alongside our own. Those define `--color-primary` at `:where(:root)`, and
+ * while `[data-theme="kinetic"]` outranks them on <html>, shipping a second palette is
+ * how the blue came back in the first place. `false` is falsy, so both theme-emitting
+ * branches are skipped and "Kinetic" below is the only theme in the build.
  */
 @plugin "daisyui" {
-  themes: corporate --default, business --prefersdark;
+  themes: false;
+}
+
+/*
+ * "Kinetic" - the daisyUI theme, mapped onto the design's palette.
+ *
+ * This block is the reason the rest of the app can be restyled without touching
+ * every screen. Until it existed, `@theme` below emitted *Tailwind* utilities
+ * (`bg-mint`, `text-forest`) while every daisyUI component kept reading
+ * `--color-primary` and `--color-base-*` from stock `corporate` - which is blue.
+ * Two palettes were live at once: the dashboard looked right because it names the
+ * custom tokens directly, and every other screen looked stock because `btn-primary`
+ * never saw them. Declaring the daisyUI theme here collapses both onto one ramp, so
+ * a button, an input, a badge and a toggle inherit the design from this file alone.
+ *
+ * `data-theme="kinetic"` on <html> is still required: the selector this plugin emits
+ * for a non-default theme is more specific than its own `:where(:root)`.
+ *
+ * `primary` is mint because the design makes the mint CTA the primary action, and
+ * `primary-content` is ink because mint is light - the same pairing as spec §9.
+ * The cost is `link-primary`, which would become mint text on a near-white canvas
+ * and fail contrast, so the two link call sites are forest instead.
+ *
+ * `radius-box: 26px` is the design's panel radius, so `rounded-box` agrees with the
+ * `rounded-[26px]` the dashboard's panels already use. `depth` and `noise` are off
+ * because the design's elevation is a soft shadow, not daisyUI's 3D bevel.
+ *
+ * The OKLCH values are literals rather than `var(--color-*)` references on purpose:
+ * daisyUI emits these into `:root`, and Tailwind tree-shakes `@theme` variables that
+ * no utility references, so a `var()` here could resolve to nothing on a page that
+ * happens not to use `bg-paper`. `@theme static` below removes that risk for the
+ * utilities. The two lists must be changed together.
+ */
+@plugin "daisyui/theme" {
+  name: "kinetic";
+  default: true;
+  color-scheme: light;
+
+  --color-base-100: oklch(1 0 0);
+  --color-base-200: oklch(0.982 0.004 160);
+  --color-base-300: oklch(0.945 0.006 160);
+  --color-base-content: oklch(0.218 0.035 165);
+
+  --color-primary: oklch(0.775 0.155 167);
+  --color-primary-content: oklch(0.218 0.035 165);
+  --color-secondary: oklch(0.341 0.071 157);
+  --color-secondary-content: oklch(0.982 0.004 160);
+  --color-accent: oklch(0.775 0.155 167);
+  --color-accent-content: oklch(0.218 0.035 165);
+  --color-neutral: oklch(0.341 0.071 157);
+  --color-neutral-content: oklch(0.982 0.004 160);
+
+  --color-info: oklch(0.52 0.085 210);
+  --color-info-content: oklch(0.982 0.004 160);
+  --color-success: oklch(0.62 0.15 155);
+  --color-success-content: oklch(0.982 0.004 160);
+  --color-warning: oklch(0.8 0.15 85);
+  --color-warning-content: oklch(0.218 0.035 165);
+  --color-error: oklch(0.577 0.245 27.325);
+  --color-error-content: oklch(0.982 0.004 160);
+
+  --radius-selector: 8px;
+  --radius-field: 12px;
+  --radius-box: 26px;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
 }
 
 /*
@@ -30,13 +105,16 @@
  *
  * These OKLCH values are the design's source of truth and are reproduced exactly
  * rather than approximated. They are declared in `@theme` (not `:root`) so Tailwind
- * emits real utilities from them - `bg-paper`, `text-ink`, `border-forest/12` - and
- * so daisyUI components inherit the same ramp instead of the corporate blue.
+ * emits real utilities from them - `bg-paper`, `text-ink`, `border-forest/12`.
+ *
+ * `static` forces every token to be emitted even when no utility happens to use it.
+ * Without it Tailwind tree-shakes unused theme variables, and a token referenced only
+ * by the daisyUI theme above would silently disappear from the build.
  *
  * `radius` is the design's single corner token: 0.5rem for panels and controls,
  * with only small status badges going fully pill-shaped.
  */
-@theme {
+@theme static {
   --color-paper: oklch(0.982 0.004 160);
   --color-ink: oklch(0.218 0.035 165);
   --color-forest: oklch(0.341 0.071 157);
@@ -131,6 +209,42 @@ html {
 
 body {
   min-height: 100%;
+}
+
+/*
+ * The page canvas: warm-white paper with a single restrained mint glow in the
+ * upper-left, which is the design's first visual principle ("airy, calm background
+ * with restrained mint glow in the upper-left corner").
+ *
+ * It is a class rather than a body rule so the dashboard, which fills its own
+ * height with panels, can opt out - the glow is page furniture, not a texture.
+ *
+ * `fixed` + `pointer-events-none` keeps it behind everything and stops it from
+ * adding scroll height. Two stacked radials are used rather than one because a
+ * single large mint radial reads as a green wash across a wide viewport.
+ */
+.canvas-glow {
+  position: relative;
+  isolation: isolate;
+}
+
+.canvas-glow::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(
+      58rem 34rem at 8% -6%,
+      color-mix(in oklab, var(--color-mint) 15%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      40rem 26rem at 96% 4%,
+      color-mix(in oklab, var(--color-mint) 7%, transparent),
+      transparent 72%
+    );
 }
 
 /*
