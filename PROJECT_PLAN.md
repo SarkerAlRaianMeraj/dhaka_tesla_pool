@@ -22,6 +22,17 @@ Every phase ships something you can click through in a browser. No feature work 
 | 9 | **Testing** | `feature/test-capacity`, `feature/test-lifecycle`, `feature/test-isolation`, `feature/test-concurrency` | The six required behaviours, including a genuinely overlapping concurrent claim race | all suites green |
 | 10 | Docs, deploy & release | `feature/docs-architecture`, `feature/readme-ai-usage`, `feature/scaling-bonus` → `pre-release` → `release/v1.0.0` | Architecture, ERD, decisions, scaling reasoning, README with justification, deployment, release cut | submission checklist walked item by item |
 
+**Unplanned work delivered between phases — `feat/kinetic-passenger-dashboard`.** The
+passenger home screen was rebuilt from an uploaded design specification after Phase 3
+merged. It is a presentation slice, not a phase: it adds no endpoint, no migration and
+no product rule, and every figure it shows already existed in the API. It was done
+before Phase 4 because the screen is where a pooling demo is first seen, and it needed
+to be honest about what the API can and cannot answer — `docs/decisions.md` D29/D30,
+PRD §9.3 A6–A8, and the brief itself committed as the design source. Consequences a
+reviewer should know: the last-ride strip stays invisible until a ride reaches
+`COMPLETED` (Phase 5), the progress track only advances once Phase 4 assigns a driver,
+and the map stays illustrative until a geo provider is introduced (PRD §9.2).
+
 ```mermaid
 flowchart LR
     P0[0 Foundation done] --> P1[1 Identity]

@@ -94,6 +94,37 @@ cookie (D24).
 - Architecture — [`docs/architecture.md`](docs/architecture.md)
 - Decisions and trade-offs — [`docs/decisions.md`](docs/decisions.md)
 - AI usage disclosure — [`AI_USAGE.md`](AI_USAGE.md)
+- Passenger dashboard design source — [`frontend/dhaka-tesla-pool-frontend-spec.md`](frontend/dhaka-tesla-pool-frontend-spec.md)
+
+## The passenger dashboard
+
+`/dashboard` for a passenger is a rebuild from the design specification above, and
+every figure on it comes from the API:
+
+| On screen | Comes from |
+|---|---|
+| The eight pickup and drop-off locations | `GET /zones` |
+| The fare | `POST /rides/quote` — never calculated in the browser |
+| The TeslaPay balance and the greeting | the session (`GET /auth/me`) |
+| The progress track and last ride | `GET /rides` |
+| Requesting a ride | `POST /rides`, then a redirect to `/rides/{id}` |
+
+The route-intelligence map is the one illustrative part: this product has no
+geospatial data, no driver locations and no telemetry, so the grid, radar sweep and
+vehicles are CSS and SVG, and the panel says "illustrative, not live tracking" on
+its face. Driver, ETA, fleet-count and charge figures read as unavailable because
+`Ride` carries no driver until Phase 4 assigns one — see
+[`docs/decisions.md`](docs/decisions.md) D29 and PRD §9.3 A6–A8.
+
+Figtree and Outfit are committed as variable `.woff2` files under
+`frontend/public/fonts/` and loaded with `next/font/local`, so a build never
+depends on reaching Google Fonts.
+
+Verified by a real browser against the running API: the rendered fare matches the
+server's quote for the selected zones, both selectors are populated from
+`GET /zones`, the navbar and footer are withheld on this route, the rail is 88px
+above 700px and absent below it, there is no horizontal overflow at 1280, 900 or
+390, and requesting a ride lands on the created ride's page.
 
 ## Coding standards
 

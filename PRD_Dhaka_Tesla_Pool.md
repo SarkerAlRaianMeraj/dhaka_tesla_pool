@@ -382,6 +382,9 @@ Real map/routing (Google Maps or equivalent), real payment gateways, microservic
 | A3 | Status updates are polled rather than pushed | Keeps the MVP free of extra infrastructure (NFR-7) | Add a push channel (SSE/WebSocket) when wait times make polling visibly janky |
 | A4 | Fares are recomputed once at `STARTED` rather than repriced on every join | One deterministic point, symmetric across passengers, fully auditable | Per-join repricing only if the pricing model becomes dynamic |
 | A5 | Zone distances come from a published coordinate grid, not real road distance | Real routing is out of scope; the grid keeps fares computable by hand | Replace the distance function with a routing provider without touching the fare structure |
+| A6 | The dashboard's route map is an illustration, not a map | There is no geospatial data in the product (A1, and §9.2 puts real mapping out of scope), so the grid, radar sweep and moving vehicles are decorative. The panel labels itself "illustrative, not live tracking" and shows no location, driver or telemetry | A real map needs a routing/geo provider and a location feed; only then can the panel stop saying so |
+| A7 | The fare shown on the dashboard is always the server's quote, never computed in the browser | One implementation of the fare rule avoids two disagreeing by a paisa, with the browser's copy being the one on screen (D29) | Nothing to break: if pricing becomes dynamic, both screens already read the same endpoint |
+| A8 | Driver, ETA, fleet-count and vehicle-charge figures are shown as unavailable until Phase 4 | `Ride` carries no driver until an assignment exists, so any value shown would be invented on a screen reached by signing in (D29) | Phase 4's assignment records make these real; the components already read from a single `Ride` prop |
 
 ### 9.4 Open questions
 | Question | Current answer for the MVP |
