@@ -17,6 +17,7 @@ Disclosed per SRS §7.6 and the challenge brief §8: AI tools are permitted, mus
 | 0 | Scaffold, compose topology, health probe, migration runner | Topology, ports, the local-PostgreSQL development stance |
 | 1 | Entity and migration code, auth endpoints and guards, the three screens, the axios client and Zod schemas | Every product rule; bcrypt over scrypt; the httpOnly cookie over `localStorage`; all departures from the course standards (D14–D21), each reviewed and recorded |
 | 2 | Fare rule as a pure function, the quote/create/list/cancel endpoints and their migration, the three ride screens, and a post-merge security review (below) | The fare model and its rounding (D23); zones as UUID foreign keys (D22); each audit finding and whether to fix it now or defer it |
+| 3 | Tesla registration and availability endpoints and their migration, the pure `canShare()` predicate, the matchable-request feed, and the `/tesla` screen | The matching rule itself came from PRD §6.1, not from the AI (D27); a dedicated `/tesla` route rather than a dashboard panel (D26); the feed staying unfiltered until rides are assigned to a Tesla; and **the exception to the no-test-files rule below, which a human approved after being told the trade-off** |
 
 ## Security review after Phase 2
 
@@ -32,6 +33,7 @@ An AI-driven review of Phases 0–2 was run once Phase 2 had merged, and every f
 - **Did:** propose file structures, entity fields, guard and middleware wiring, Dockerfile shapes, and draft prose for the PRD and docs.
 - **Did not:** choose the matching rule, the fare model, the capacity mechanism, or the scope boundaries. Those are documented decisions in `docs/decisions.md` and `PRD_Dhaka_Tesla_Pool.md`, derived from the brief and reviewed by the team.
 - **Verification rule applied throughout:** nothing is committed unless `npm run build` and `npm run lint` are green and the phase's slice has been clicked through end to end. Phases 1–8 write no test files; the six required behaviours are proven in Phase 9 (see `PROJECT_PLAN.md`). Code that failed to build was fixed or removed, never accepted because the AI produced it.
+- **One approved exception to that rule, in Phase 3:** `backend/src/tesla/matching.spec.ts`. The AI raised the conflict itself rather than quietly adding the file, and put the choice to the human: PRD §5.4 traces user story D3 ("as a driver I see only requests my Tesla can serve") to a *matching unit*, which reads as a requirement for a unit test, while `PROJECT_PLAN.md` forbids test files in Phases 1–8 to leave Phase 9 room to demonstrate testing skill. **The human chose to keep the test**, on the grounds that the matching rule is the one piece of Phase 3 that a reviewer cannot confirm by clicking — the feed is unfiltered until Phase 4, so the browser pass cannot distinguish a correct predicate from a wrong one — and that a wrong predicate would be invisible until pooling is built. No other test file exists in Phases 1–8.
 
 ## One accepted suggestion
 
