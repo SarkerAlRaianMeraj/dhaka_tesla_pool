@@ -10,12 +10,119 @@
 }
 
 /*
- * A system stack, not a webfont. The production build must never depend on
- * reaching Google Fonts at build time or the container build breaks offline.
+ * Figtree and Outfit are self-hosted from `public/fonts/` via `next/font/local`
+ * and arrive as the `--font-figtree` / `--font-outfit` variables that
+ * `app/layout.tsx` puts on <html>. They are committed files, not a build-time
+ * download, so `next build` still works with no network - which the container
+ * build in Phase 8 requires.
+ *
+ * `--font-display` is Outfit, for headings and figures. It is declared here as a
+ * real token so components use `font-display` rather than repeating the variable.
  */
 @theme inline {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/*
+ * "Kinetic Glass Rails" - the dashboard's palette.
+ *
+ * These OKLCH values are the design's source of truth and are reproduced exactly
+ * rather than approximated. They are declared in `@theme` (not `:root`) so Tailwind
+ * emits real utilities from them - `bg-paper`, `text-ink`, `border-forest/12` - and
+ * so daisyUI components inherit the same ramp instead of the corporate blue.
+ *
+ * `radius` is the design's single corner token: 0.5rem for panels and controls,
+ * with only small status badges going fully pill-shaped.
+ */
+@theme {
+  --color-paper: oklch(0.982 0.004 160);
+  --color-ink: oklch(0.218 0.035 165);
+  --color-forest: oklch(0.341 0.071 157);
+  --color-mint: oklch(0.775 0.155 167);
+  --color-destructive: oklch(0.577 0.245 27.325);
+
+  --radius: 0.5rem;
+
+  /*
+   * The six animations the design defines. Registered as `--animate-*` so they are
+   * usable as `animate-rise`, `animate-radar` and so on.
+   */
+  --animate-rise: rise 0.65s cubic-bezier(0.22, 0.8, 0.25, 1) both;
+  --animate-drive: drive 9s ease-in-out infinite alternate;
+  --animate-route-dash: route-dash 1.3s linear infinite;
+  --animate-radar: radar 5s ease-in-out infinite;
+  --animate-ping-soft: ping-soft 2s ease-out infinite;
+  --animate-spin-slow: spin 0.8s linear infinite;
+}
+
+/*
+ * Keyframes live outside `@theme` on purpose: `@theme` only accepts custom
+ * property values, so the `@keyframes` bodies are declared here where CSS expects
+ * them, and are referenced by the `--animate-*` names above.
+ */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* The Tesla crossing the map, and the route it is following. */
+@keyframes drive {
+  0% {
+    left: 12%;
+    top: 76%;
+  }
+  52% {
+    left: 40%;
+    top: 48%;
+  }
+  100% {
+    left: 83%;
+    top: 17%;
+  }
+}
+
+@keyframes route-dash {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+
+/*
+ * The sweep crosses from off the left edge to off the right one. Only the
+ * transform is animated: the design also gave the sweep a `left: -50%` starting
+ * offset, and applying both would displace it twice as far as intended.
+ */
+@keyframes radar {
+  from {
+    transform: translateX(-140%);
+  }
+  to {
+    transform: translateX(380%);
+  }
+}
+
+@keyframes ping-soft {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-mint) 60%, transparent);
+  }
+  75%,
+  100% {
+    box-shadow: 0 0 0 14px transparent;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 html {
@@ -24,4 +131,21 @@ html {
 
 body {
   min-height: 100%;
+}
+
+/*
+ * Motion is not decoration here - the moving Tesla and the route dashes are how the
+ * screen says "live". Someone who has asked the OS for less motion still needs
+ * every state to be readable, so the animations are neutralised rather than
+ * removed: the map, the route, and the live indicators all remain, static.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

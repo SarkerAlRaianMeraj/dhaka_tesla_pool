@@ -18,6 +18,16 @@ Disclosed per SRS §7.6 and the challenge brief §8: AI tools are permitted, mus
 | 1 | Entity and migration code, auth endpoints and guards, the three screens, the axios client and Zod schemas | Every product rule; bcrypt over scrypt; the httpOnly cookie over `localStorage`; all departures from the course standards (D14–D21), each reviewed and recorded |
 | 2 | Fare rule as a pure function, the quote/create/list/cancel endpoints and their migration, the three ride screens, and a post-merge security review (below) | The fare model and its rounding (D23); zones as UUID foreign keys (D22); each audit finding and whether to fix it now or defer it |
 | 3 | Tesla registration and availability endpoints and their migration, the pure `canShare()` predicate, the matchable-request feed, and the `/tesla` screen | The matching rule itself came from PRD §6.1, not from the AI (D27); a dedicated `/tesla` route rather than a dashboard panel (D26); the feed staying unfiltered until rides are assigned to a Tesla; and **the exception to the no-test-files rule below, which a human approved after being told the trade-off** |
+| 4a | The passenger dashboard rebuilt from an uploaded design specification: local variable fonts, the OKLCH token set and keyframes, the rail, booking panel, map panel, progress track and last-ride strip, and the two hooks behind them | Keeping the real API instead of the brief's simulated data; dropping the brief's browser-side fare formula; refusing the brief's invented driver, ETA, fleet count and charge level (D29); committing the font files rather than fetching from Google at build time; omitting the Wallet and Profile rail items because no routes exist; deriving the default route from the zone list rather than writing it from an effect (D30); and whether the brief itself is committed as the design source |
+
+### What the design brief changed, and what it did not
+
+The uploaded specification was precise about CSS and silent about provenance, so the judgement calls were all about numbers rather than pixels. Each was put to the human rather than resolved silently.
+
+- **The brief's fare formula was not ported.** It would have created a second implementation of `fare.ts` that eventually disagrees by a paisa, with the browser's copy on screen and therefore believed. The dashboard displays what `POST /rides/quote` answered.
+- **The brief's driver, ETA, fleet count and charge level were not rendered.** `Ride` has no driver field until Phase 4 assigns one, so the screen says so rather than showing a plausible-looking stranger (D29, PRD A6/A8).
+- **The brief's own words about the map were kept.** It captioned the animation "simulated live fleet activity"; the panel now says "illustrative, not live tracking", which is the same admission in plainer words.
+- **The brief's visual system was followed literally,** because fidelity is cheap to add now and expensive to retrofit, and every colour, radius and keyframe is an `@theme` token rather than a value restated per component.
 
 ## Security review after Phase 2
 
