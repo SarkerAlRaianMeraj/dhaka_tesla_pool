@@ -97,3 +97,62 @@ export type Ride = {
   createdAt: string;
   updatedAt: string;
 };
+
+/**
+ * Whether a driver's Tesla is offering rides, mirroring the API's
+ * `TeslaAvailability`. Two states only, and Phase 3 needs no more: a driver who
+ * goes offline mid-trip still owes that ride, so availability governs new requests
+ * and never assignments already made.
+ */
+export type TeslaAvailability = "OFFLINE" | "ONLINE";
+
+/**
+ * The driver's own Tesla (FR-D3.1).
+ *
+ * `capacity` is fixed at registration (US-D2) and is returned on every read so the
+ * summary screen shows the same number Phase 4 reasons about, rather than a copy
+ * the browser remembers from form state.
+ */
+export type Tesla = {
+  id: string;
+  plate: string;
+  model: string;
+  capacity: number;
+  availability: TeslaAvailability;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * `GET /tesla/me` always answers 200 and wraps the empty case as `tesla: null`.
+ *
+ * The envelope exists because of what the API does *not* send: a bare `null` return
+ * reaches the browser as a zero-length body, so `response.data` is `undefined` and
+ * "nothing registered" is indistinguishable from "no payload". Reading
+ * `data.tesla` rather than `data` keeps that distinction explicit.
+ */
+export type MyTesla = {
+  tesla: Tesla | null;
+};
+
+/**
+ * One open request in a driver's feed (FR-D3.3, FR-M2).
+ *
+ * No passenger identity, and none is missed: this is a broadcast of open requests,
+ * so naming the passenger would turn the feed into a directory of who wants a ride
+ * where. Zone names are carried alongside codes so the row can be read without a
+ * second lookup.
+ */
+export type MatchableRide = {
+  id: string;
+  pickupZoneCode: string;
+  pickupZoneName: string;
+  destinationZoneCode: string;
+  destinationZoneName: string;
+  seatsRequested: number;
+  fareEstimatePoysha: number;
+  status: RideStatus;
+  /** Always true in Phase 3; Phase 4 narrows the list using it (D27). */
+  matchable: boolean;
+  createdAt: string;
+};

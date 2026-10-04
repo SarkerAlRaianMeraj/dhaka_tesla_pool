@@ -12,11 +12,11 @@ import type { Zone } from "@/lib/types";
 /**
  * The role-aware landing screen after sign-in.
  *
- * It proves the identity slice end to end: the session cookie decides which of
- * the two home screens is rendered, and the zone list proves the browser is
- * making authenticated calls. Ride requests and Tesla registration arrive in
- * later phases, so each panel states plainly what is not built yet rather than
- * showing a control that does nothing.
+ * It decides which of the two home screens is rendered from the session cookie, and
+ * the zone list proves the browser is making authenticated calls. Each role's card
+ * links to the screen that does the work for them — a passenger to request a ride,
+ * a driver to register and go online — so the dashboard routes rather than restates
+ * what those screens do.
  */
 const DashboardPage = () => {
   const router = useRouter();
@@ -115,9 +115,14 @@ const DashboardPage = () => {
             <div className="card-body">
               <h2 className="card-title">Register Bullet</h2>
               <p className="text-sm text-base-content/70">
-                Add your Tesla with its seat capacity, go online, and see only the
-                requests a pooled route can actually serve. Arrives in phase 3.
+                Add your Tesla with its seat capacity, go online, and see the
+                requests a pooled route can serve.
               </p>
+              <div className="card-actions">
+                <Link href="/tesla" className="btn btn-primary btn-sm">
+                  Set up your Tesla
+                </Link>
+              </div>
             </div>
           </article>
         )}
