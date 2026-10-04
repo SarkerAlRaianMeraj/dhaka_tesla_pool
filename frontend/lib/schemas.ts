@@ -63,9 +63,34 @@ export const rideRequestSchema = z
     path: ["destinationZoneCode"],
   });
 
+/**
+ * The Tesla registration form (FR-D3.1, US-D2).
+ *
+ * The plate is only length-checked here. The API owns the real shape of a
+ * Bangladeshi registration and normalises case and spacing itself, so a regex in
+ * the browser would either duplicate that rule or be looser and reject plates the
+ * server accepts. Failing fast on an empty box is the whole job here.
+ *
+ * `capacity` is bounded 1-3 to match the server. Unlike the API, which treats it as
+ * optional and defaults to the 3-seater Bullet, the form always sends a value
+ * because choosing the seats is the one decision this screen actually asks for.
+ */
+export const teslaRegistrationSchema = z.object({
+  plate: z
+    .string()
+    .min(1, "Plate is required")
+    .max(20, "Plate cannot exceed 20 characters"),
+  capacity: z
+    .number({ message: "Choose how many passengers your Tesla seats" })
+    .int("Seats must be a whole number")
+    .min(1, "At least one seat")
+    .max(3, "A Tesla carries at most 3 passengers"),
+});
+
 export type RegisterData = z.infer<typeof registerSchema>;
 export type LoginData = z.infer<typeof loginSchema>;
 export type RideRequestData = z.infer<typeof rideRequestSchema>;
+export type TeslaRegistrationData = z.infer<typeof teslaRegistrationSchema>;
 
 /** First message from a failed parse, which is all a single-line banner shows. */
 export const firstIssue = (error: z.ZodError): string =>
