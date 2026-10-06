@@ -6,13 +6,20 @@ import { Footer } from "./footer";
 import { Navbar } from "./navbar";
 
 /**
- * Owns the site chrome that `app/layout.tsx` wraps around every page.
+ * Owns the site chrome that `app/layout.tsx` wraps around every route.
  *
- * The passenger dashboard is a full-height shell with its own 88px navigation
- * rail, so the top navbar and the footer would both sit outside a layout that
- * already provides its own navigation - the rail would be a second, competing
- * menu. The decision lives here, in one place, rather than as a path check
- * duplicated across `navbar.tsx` and `footer.tsx`.
+ * Three routes render bare, and the reason differs per route:
+ *
+ * - `/dashboard` is a full-height shell with its own 88px navigation rail, so the top
+ *   navbar and the footer would both sit outside a layout that already provides its
+ *   own navigation - the rail would be a second, competing menu.
+ * - `/login` and `/register` are a single focused task on a single centred panel. A
+ *   navbar above them competes with the form's own submit button, and a footer below
+ *   pushes the panel off centre on a short viewport.
+ *
+ * Keeping the list here, in one place, is the point: the alternative is a path check
+ * duplicated across `navbar.tsx` and `footer.tsx`, or a `:has()` selector hiding global
+ * chrome - neither of which is reviewable.
  *
  * The trade-off: `Footer` was a server component so it would ship no client
  * JavaScript, and rendering it from a client component makes it part of the
@@ -22,12 +29,12 @@ import { Navbar } from "./navbar";
  *
  * Named to match its siblings in this folder, which are lower-case.
  */
-const DASHBOARD = "/dashboard";
+const BARE_ROUTES = new Set(["/dashboard", "/login", "/register"]);
 
 export const Chrome = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname();
 
-  if (pathname === DASHBOARD) return <>{children}</>;
+  if (BARE_ROUTES.has(pathname)) return <>{children}</>;
 
   return (
     <>

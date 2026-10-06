@@ -43,8 +43,13 @@ export const metadata: Metadata = {
  * provider.
  *
  * `Chrome` renders the navbar and footer for every route except `/dashboard`,
- * which supplies its own navigation rail, so the rule about which pages get the
- * standard chrome lives in one component instead of in this layout.
+ * `/login` and `/register`, which each supply their own focused layout, so the rule
+ * about which pages get the standard chrome lives in one component instead of in
+ * this layout.
+ *
+ * `data-theme` selects the Kinetic daisyUI theme declared in `globals.css`. It has to
+ * be named explicitly: the theme plugin's own default is emitted at `:where(:root)`,
+ * which any `data-theme` attribute outranks.
  *
  * `flex min-h-full flex-col` on body plus `flex-1` on each page's Layout keeps
  * the footer pinned to the bottom on a short page instead of letting it ride up
@@ -53,7 +58,7 @@ export const metadata: Metadata = {
 const RootLayout = ({ children }: LayoutProps<"/">) => (
   <html
     lang="en"
-    data-theme="corporate"
+    data-theme="kinetic"
     className={`${figtree.variable} ${outfit.variable} h-full antialiased`}
   >
     <body className="flex min-h-full flex-col bg-base-200 text-base-content">

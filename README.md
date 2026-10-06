@@ -94,7 +94,57 @@ cookie (D24).
 - Architecture — [`docs/architecture.md`](docs/architecture.md)
 - Decisions and trade-offs — [`docs/decisions.md`](docs/decisions.md)
 - AI usage disclosure — [`AI_USAGE.md`](AI_USAGE.md)
-- Passenger dashboard design source — [`frontend/dhaka-tesla-pool-frontend-spec.md`](frontend/dhaka-tesla-pool-frontend-spec.md)
+- Design source, applied to every route — [`frontend/dhaka-tesla-pool-frontend-spec.md`](frontend/dhaka-tesla-pool-frontend-spec.md)
+
+## The Kinetic design system
+
+Every route the app serves is built from one daisyUI theme, declared once in
+`frontend/app/globals.css`:
+
+| Token | Value | Used for |
+|---|---|---|
+| `--color-primary` | mint `oklch(0.775 0.155 167)` | the single accent: primary actions, live state |
+| `--color-base-content` | ink `oklch(0.218 0.035 165)` | body text |
+| `--color-base-200` | paper `oklch(0.982 0.004 160)` | the canvas |
+| `--color-secondary` | forest `oklch(0.341 0.071 157)` | links, eyebrows |
+| `--radius-box` | 26px | every panel and field |
+| `--depth` / `--noise` | 0 / 0 | glass without daisyUI's default bevel |
+
+Because the design is a theme rather than per-screen overrides, every existing
+daisyUI primitive — `btn`, `badge`, `input`, `select`, `toggle`, `alert`, `navbar` —
+restyles itself, and no screen carries a hard-coded colour.
+
+Four rules are load-bearing and are enforced by tests rather than by convention:
+
+- **`@plugin "daisyui" { themes: false; }`.** daisyUI treats a custom theme as
+  additive, so without this the built CSS also carries `corporate` and `violet` and
+  the app is one typo away from a stock palette.
+- **The theme is light-only.** The brief's `theme-controller` dark variant shipped
+  as invalid CSS and produced no rules; it was removed rather than repaired. There
+  is no dark mode — see D31.
+- **Panels have exactly one recipe** — 26px radius, `border-ink/6`, white,
+  `0 20px 48px` — and it lives in `frontend/components/ui/panel.tsx` alongside
+  `Eyebrow`, `PrimaryAction`, `StatusPill` and `Skeleton`. A panel inside a panel is
+  a defect: internal areas are unframed rows and dividers.
+- **Status colour is not re-invented per screen.** `StatusPill` consumes
+  `statusBadgeClass` from `frontend/lib/format.ts`, so the dashboard, the rides list
+  and the ride detail cannot disagree about what `REQUESTED` looks like.
+
+The global navbar and footer are withheld on `/dashboard`, `/login` and `/register`
+by a route-aware `Chrome` wrapper, so a screen that owns its whole viewport does not
+have to hide a shell it does not own.
+
+Figtree and Outfit are committed as variable `.woff2` files under
+`frontend/public/fonts/` and loaded with `next/font/local`, so a build never
+depends on reaching Google Fonts.
+
+Verified by a real browser against the running API across all nine routes: 227
+checks pass, covering theme selection, the absence of any stock daisyUI hue, the
+display face on every `h1`, the 26px radius, chrome presence per route, horizontal
+overflow at 1280/900/390px, and no console errors other than the deliberate
+signed-out `401` from `/auth/me`. Behavioural flows are driven end to end — quote →
+request → cancel on the rides screens, and register → toggle → feed on the driver's
+Tesla page — asserting the fare on screen against what the API returned.
 
 ## The passenger dashboard
 

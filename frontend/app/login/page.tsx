@@ -8,7 +8,7 @@ import {
   PrimaryButton,
   TextInput,
 } from "@/components/form-controls";
-import { Layout } from "@/components/Layout/layout";
+import { AuthShell } from "@/components/Layout/auth-shell";
 import { getErrorMessage } from "@/lib/apiClient";
 import { useAuth } from "@/lib/auth-context";
 import { firstIssue, loginSchema, type LoginData } from "@/lib/schemas";
@@ -51,42 +51,49 @@ const LoginPage = () => {
   };
 
   return (
-    <Layout width="narrow">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
-        <p className="text-sm text-base-content/70">
-          Pick up where you left off.
-        </p>
-      </div>
-      <div className="card bg-base-100 shadow-xl">
-        <form className="card-body flex flex-col gap-4" onSubmit={handleSubmit}>
-          <TextInput
-            label="Email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <TextInput
-            label="Password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <FormError>{error}</FormError>
-          <PrimaryButton pending={pending}>Sign in</PrimaryButton>
-        </form>
-      </div>
-      <p className="text-sm text-base-content/70">
-        New here?{" "}
-        <Link className="link link-primary" href="/register">
-          Create an account
-        </Link>
-      </p>
-    </Layout>
+    <AuthShell
+      eyebrow="Welcome back"
+      title="Sign in"
+      subtitle="Pick up where you left off."
+      footer={
+        <>
+          New here?{" "}
+          {/*
+            `link-primary` would inherit `primary`, which is mint under the Kinetic
+            theme — mint text on a near-white canvas, which does not pass contrast.
+            Forest is the theme's own link colour and the pair is used on both auth
+            pages so they read as one place.
+          */}
+          <Link
+            className="font-semibold text-forest underline decoration-mint decoration-2 underline-offset-4 hover:decoration-forest"
+            href="/register"
+          >
+            Create an account
+          </Link>
+        </>
+      }
+    >
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <TextInput
+          label="Email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <TextInput
+          label="Password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <FormError>{error}</FormError>
+        <PrimaryButton pending={pending}>Sign in</PrimaryButton>
+      </form>
+    </AuthShell>
   );
 };
 
