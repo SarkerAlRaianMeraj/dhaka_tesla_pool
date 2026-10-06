@@ -19,6 +19,37 @@ Disclosed per SRS §7.6 and the challenge brief §8: AI tools are permitted, mus
 | 2 | Fare rule as a pure function, the quote/create/list/cancel endpoints and their migration, the three ride screens, and a post-merge security review (below) | The fare model and its rounding (D23); zones as UUID foreign keys (D22); each audit finding and whether to fix it now or defer it |
 | 3 | Tesla registration and availability endpoints and their migration, the pure `canShare()` predicate, the matchable-request feed, and the `/tesla` screen | The matching rule itself came from PRD §6.1, not from the AI (D27); a dedicated `/tesla` route rather than a dashboard panel (D26); the feed staying unfiltered until rides are assigned to a Tesla; and **the exception to the no-test-files rule below, which a human approved after being told the trade-off** |
 | 4a | The passenger dashboard rebuilt from an uploaded design specification: local variable fonts, the OKLCH token set and keyframes, the rail, booking panel, map panel, progress track and last-ride strip, and the two hooks behind them | Keeping the real API instead of the brief's simulated data; dropping the brief's browser-side fare formula; refusing the brief's invented driver, ETA, fleet count and charge level (D29); committing the font files rather than fetching from Google at build time; omitting the Wallet and Profile rail items because no routes exist; deriving the default route from the zone list rather than writing it from an effect (D30); and whether the brief itself is committed as the design source |
+| 4b | The same design rolled across the eight remaining routes, expressed once as a daisyUI theme so every existing `btn`, `badge`, `input`, `select`, `toggle` and `navbar` restyles itself: the shared `Panel`/`Eyebrow`/`StatusPill`/`PrimaryAction`/`Skeleton` primitives, the landing page, both auth screens, the three rides screens, the driver's Tesla page, the 404, and all three loading boundaries | Dropping dark mode rather than repairing the brief's broken `--prefersdark` variant (D31); `themes: false`, without which a stock daisyUI palette ships alongside the custom theme; forest links instead of the brief's unreadable mint links; the register page's role dropdown becoming two radio cards; whether auth screens keep the global navbar |
+
+### What the design rollout changed, and what it did not
+
+The dashboard proved the visual system on one route. Rolling it across the rest meant
+deciding how far a shared component should reach, and refusing two kinds of change
+that would have looked like progress.
+
+- **The theme was made the single source of the palette.** Rather than restyling each
+  screen's controls, the OKLCH tokens, three radii and the box-shadow recipe became
+  `@plugin "daisyui/theme"` values. `themes: false` is the load-bearing line: daisyUI
+  treats a custom theme as additive, so without it the built CSS also carries
+  `corporate` and `violet` (D31).
+- **Dark mode was removed, not repaired.** The brief's `theme-controller` variant
+  emitted invalid CSS and silently did nothing. Fixing it was judged more expensive
+  than dropping it, and the human approved light-only. The consequence is recorded
+  honestly: there is no dark mode and no system-preference path.
+- **One panel recipe, and the existing duplicates were left in place.** The dashboard's
+  four components already had the values written literally. Consolidating them would
+  have churned verified code to remove a string duplication, so new work goes through
+  `components/ui/panel.tsx` and consolidation stays a separate decision.
+- **Status colour was not re-invented per screen.** `StatusPill` consumes
+  `statusBadgeClass` from `lib/format.ts`, so three screens cannot drift apart on what
+  `REQUESTED` means.
+- **The register page's role `<select>` became two radio cards.** Both roles sat behind
+  one dropdown on the decision that sets up everything after it, and "driver" is a
+  choice worth making by seeing it.
+- **No screen's behaviour changed.** Fares still come from `POST /rides/quote`,
+  availability is still set by the server rather than optimistically, and the empty
+  states are still reachable. The brief was followed literally on pixels and not at all
+  on data — the same rule Phase 4a established, applied to eight more routes.
 
 ### What the design brief changed, and what it did not
 

@@ -385,6 +385,8 @@ Real map/routing (Google Maps or equivalent), real payment gateways, microservic
 | A6 | The dashboard's route map is an illustration, not a map | There is no geospatial data in the product (A1, and §9.2 puts real mapping out of scope), so the grid, radar sweep and moving vehicles are decorative. The panel labels itself "illustrative, not live tracking" and shows no location, driver or telemetry | A real map needs a routing/geo provider and a location feed; only then can the panel stop saying so |
 | A7 | The fare shown on the dashboard is always the server's quote, never computed in the browser | One implementation of the fare rule avoids two disagreeing by a paisa, with the browser's copy being the one on screen (D29) | Nothing to break: if pricing becomes dynamic, both screens already read the same endpoint |
 | A8 | Driver, ETA, fleet-count and vehicle-charge figures are shown as unavailable until Phase 4 | `Ride` carries no driver until an assignment exists, so any value shown would be invented on a screen reached by signing in (D29) | Phase 4's assignment records make these real; the components already read from a single `Ride` prop |
+| A9 | The interface is light-only, with no dark mode and no system-preference path | The design's dark variant emitted invalid CSS and silently did nothing; it was removed rather than repaired, and the human approved light-only (D31) | A second `kinetic-dark` theme block plus a stored user preference. It is a small change now and a cross-cutting one later, which is why it is logged rather than forgotten |
+| A10 | One panel treatment applies everywhere, and a panel inside a panel is a defect | The design specifies a single surface recipe, and the brief's internal areas are unframed rows (D31) | Nothing to break: the recipe is one exported constant, so a second treatment would be a deliberate new constant, not a drift |
 
 ### 9.4 Open questions
 | Question | Current answer for the MVP |
@@ -447,9 +449,11 @@ One row per user story: which SRS requirement it satisfies, which screen proves 
 - `docs/architecture.md` — architecture diagram, ERD, lifecycle diagram
 - `docs/decisions.md` — matching rule, fare model, concurrency mechanism, trade-offs
 - `docs/scaling-bonus.md` — reasoning for 1M passengers / 100k drivers (SRS §7.8)
+- `frontend/dhaka-tesla-pool-frontend-spec.md` — the Kinetic Glass Rails design source, applied to every route (D29–D31)
 - `README.md` — setup, demo credentials, API overview, AI usage disclosure
 
 ### 11.3 Revision history
 | Version | Date | Change | Author |
 |---|---|---|---|
 | 1.0.0-draft | — | Initial PRD derived from the Dhaka Tesla Pool brief and SRS v1.0.0-draft | Team |
+| 1.1.0-draft | — | No requirement changed. Recorded the design rollout's two product-visible consequences as assumptions A9 (light-only, no dark mode) and A10 (one panel treatment), and named the design specification in §11.2 | Team |

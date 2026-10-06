@@ -64,6 +64,29 @@ flowchart LR
 | 9 | SRS §7.3 and brief §12 — the six required behaviours, proven |
 | 10 | NFR-8, SRS §7.1 / §7.5 / §7.6 / §7.8, brief §7.5 / §13 / §14 |
 
+## The visual layer, delivered ahead of the phase list
+
+The Kinetic Glass Rails design was applied to every route before the numbered phases
+finished, and it is recorded here rather than folded into a phase so it is not
+mistaken for phase scope that has not happened yet.
+
+- **Delivered under Phase 4a** (`/dashboard`) and **4b** (the remaining eight routes
+  and the three loading boundaries), tracked in `AI_USAGE.md` and `docs/decisions.md`
+  D29–D31.
+- **It closes no requirement**, and deliberately so. It changes how the existing
+  requirements are presented, not which of them are satisfied. The one hard rule
+  carried from 4a is unchanged: every figure on screen comes from the API, so no
+  phase inherits fabricated numbers from a restyled screen.
+- **What it commits later phases to.** Phases 5–8 must keep routing every new surface
+  through `frontend/components/ui/` and the `kinetic` daisyUI theme, and must not
+  introduce a second panel recipe. A new route that hard-codes a colour or a radius
+  is a defect against this plan, not a style preference.
+- **What it defers.** There is no dark mode (D31), and visual-regression testing is
+  not part of this plan. The nine routes are covered by 227 browser checks that assert
+  the theme, palette, radius, chrome and overflow on every one of them, but those are
+  throwaway harnesses, not a committed suite — Phase 9 is still where testing is
+  meant to be demonstrated.
+
 ## Working rules (every phase)
 
 1. **Merge gate** — a branch merges into `master` when build and lint are green and the slice has been clicked through end to end. Commits are conventional (`feat(scope): …`, `fix(…)`, `docs(…)`, `chore(…)`, `test(…)`, `refactor(…)`, `build(…)`). No "update"/"fix"/"final" commits, no filler commits.
