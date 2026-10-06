@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FormError, PrimaryButton, TextInput } from "@/components/form-controls";
 import { Layout } from "@/components/Layout/layout";
+import { Eyebrow, Panel } from "@/components/ui/panel";
+import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient, getErrorMessage, isUnauthorized } from "@/lib/apiClient";
 import { useAuth } from "@/lib/auth-context";
 import { formatPoysha, formatSeats, formatTimestamp } from "@/lib/format";
@@ -24,6 +26,10 @@ const CAPACITY_OPTIONS = [1, 2, 3];
  * The empty state is `tesla: null` inside a 200 response, not a 404. "You have not
  * registered yet" is the ordinary opening state of this screen, and treating it as
  * an error would put the one state most drivers see first into the catch branch.
+ *
+ * The registration form is the same Panel + segmented control the passenger's
+ * `/rides/request` screen uses. Both are "pick a value, see the real number", and a
+ * driver should not have to learn a second control for a three-way choice.
  */
 const TeslaPage = () => {
   const router = useRouter();
@@ -199,18 +205,23 @@ const TeslaPage = () => {
   if (isLoading) {
     return (
       <Layout>
-        <p className="text-sm text-base-content/60">Checking your session...</p>
+        <p className="text-sm text-ink/60">Checking your session...</p>
       </Layout>
     );
   }
 
   if (!user || user.role !== "driver") return null;
 
+  const isOnline = tesla?.availability === "ONLINE";
+
   return (
     <Layout>
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Your Tesla</h1>
-        <p className="text-sm text-base-content/70">
+        <Eyebrow>Driver</Eyebrow>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
+          Your Tesla
+        </h1>
+        <p className="text-sm text-ink/60">
           {tesla
             ? "Toggle availability and watch for requests you can serve."
             : "Register the Tesla you drive before you can take requests."}
@@ -221,12 +232,12 @@ const TeslaPage = () => {
 
       {isLoadingTesla ? (
         <div className="flex flex-col gap-3">
-          <div className="skeleton h-8 w-1/3" />
-          <div className="skeleton h-32 w-full" />
+          <Skeleton className="h-8 w-1/3" label="Loading your Tesla" />
+          <Skeleton className="h-32 w-full" label="Loading your Tesla" />
         </div>
       ) : tesla === null ? (
-        <form className="card bg-base-100 shadow-xl" onSubmit={handleRegister}>
-          <div className="card-body flex flex-col gap-4">
+        <Panel as="section" className="animate-rise">
+          <form className="flex flex-col gap-5 px-7 py-6" onSubmit={handleRegister}>
             <TextInput
               label="Registration plate"
               name="plate"
@@ -236,25 +247,39 @@ const TeslaPage = () => {
             />
 
             <fieldset className="flex flex-col gap-2">
-              <legend className="text-sm font-medium text-base-content">
+              <legend className="font-display text-sm font-medium text-ink">
                 Passenger seats
               </legend>
-              <div className="join">
-                {CAPACITY_OPTIONS.map((seats) => (
-                  <button
-                    key={seats}
-                    type="button"
-                    onClick={() => setCapacity(seats)}
-                    aria-pressed={capacity === seats}
-                    className={`btn join-item btn-sm ${
-                      capacity === seats ? "btn-primary" : "btn-outline"
-                    }`}
-                  >
-                    {seats}
-                  </button>
-                ))}
+              {/*
+                The same segmented control as `/rides/request`, and for the same
+                reason: three valid values, one click each, and the pressed state is
+                what tells the driver what they just chose.
+              */}
+              <div
+                role="group"
+                aria-label="Passenger seats"
+                className="grid grid-cols-3 gap-1.5"
+              >
+                {CAPACITY_OPTIONS.map((seats) => {
+                  const selected = capacity === seats;
+                  return (
+                    <button
+                      key={seats}
+                      type="button"
+                      onClick={() => setCapacity(seats)}
+                      aria-pressed={selected}
+                      className={`min-h-[48px] rounded-2xl border font-display text-base font-semibold tabular-nums transition active:scale-[.98] ${
+                        selected
+                          ? "border-mint bg-mint text-ink shadow-[0_10px_24px_rgba(112,196,168,0.28)]"
+                          : "border-ink/14 bg-white/70 text-ink/70 hover:border-mint/55 hover:bg-white"
+                      }`}
+                    >
+                      {seats}
+                    </button>
+                  );
+                })}
               </div>
-              <p className="text-xs text-base-content/60">
+              <p className="text-xs text-ink/55">
                 Fixed once you register. Pooling never puts more passengers aboard
                 than this number.
               </p>
@@ -265,45 +290,53 @@ const TeslaPage = () => {
             <PrimaryButton pending={isRegistering}>
               Register my Tesla
             </PrimaryButton>
-          </div>
-        </form>
+          </form>
+        </Panel>
       ) : (
         <>
-          <article className="card bg-base-100 shadow-xl">
-            <div className="card-body flex flex-col gap-4">
+          <Panel as="article" className="animate-rise">
+            <div className="flex flex-col gap-5 px-7 py-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex flex-col gap-1">
-                  <h2 className="card-title">{tesla.plate}</h2>
-                  <p className="text-sm text-base-content/70">
+                  <h2 className="font-display text-xl font-semibold tracking-tight text-ink">
+                    {tesla.plate}
+                  </h2>
+                  <p className="text-sm text-ink/60">
                     {tesla.model} &middot; {formatSeats(tesla.capacity)}
                   </p>
                 </div>
+                {/*
+                  Online is the mint accent rather than daisy's success green, because
+                  here it means "listed", not "no error". Offline is deliberately
+                  quiet rather than a warning colour: going offline is a normal choice,
+                  not a fault, and the copy below says so.
+                */}
                 <span
-                  className={`badge ${
-                    tesla.availability === "ONLINE"
-                      ? "badge-success"
-                      : "badge-ghost"
+                  className={`inline-flex h-7 items-center rounded-full px-3 font-display text-[11px] font-semibold tracking-wide uppercase ${
+                    isOnline
+                      ? "bg-mint/22 text-forest ring-1 ring-mint/55"
+                      : "bg-ink/6 text-ink/55 ring-1 ring-ink/12"
                   }`}
                 >
-                  {tesla.availability === "ONLINE" ? "Online" : "Offline"}
+                  {isOnline ? "Online" : "Offline"}
                 </span>
               </div>
 
-              <label className="flex cursor-pointer items-center justify-between gap-4">
+              <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl bg-paper/70 px-4 py-3.5">
                 <span className="flex flex-col gap-1">
-                  <span className="text-sm font-medium">
-                    {tesla.availability === "ONLINE" ? "Go offline" : "Go online"}
+                  <span className="font-display text-sm font-medium text-ink">
+                    {isOnline ? "Go offline" : "Go online"}
                   </span>
-                  <span className="text-xs text-base-content/60">
-                    {tesla.availability === "ONLINE"
+                  <span className="text-xs text-ink/55">
+                    {isOnline
                       ? "You are listed as available for new requests."
                       : "Go online to start receiving requests you can serve."}
                   </span>
                 </span>
                 <input
                   type="checkbox"
-                  className="toggle toggle-success"
-                  checked={tesla.availability === "ONLINE"}
+                  className="toggle toggle-primary"
+                  checked={isOnline}
                   disabled={isSettingAvailability}
                   onChange={(event) =>
                     void handleAvailabilityChange(
@@ -315,12 +348,14 @@ const TeslaPage = () => {
 
               <FormError>{availabilityError}</FormError>
             </div>
-          </article>
+          </Panel>
 
           <section className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-medium">Matchable requests</h2>
-              <p className="text-sm text-base-content/70">
+              <h2 className="font-display text-lg font-semibold text-ink">
+                Matchable requests
+              </h2>
+              <p className="text-sm text-ink/60">
                 {requests.length === 0
                   ? "No open requests right now."
                   : `${requests.length} open ${requests.length === 1 ? "request" : "requests"}.`}
@@ -331,8 +366,8 @@ const TeslaPage = () => {
                 two requests and a driver's first request does not exist yet; the
                 corridor check starts narrowing this list once you accept one (D27).
               */}
-              {requests.length > 0 && tesla.availability === "ONLINE" ? (
-                <p className="text-xs text-base-content/60">
+              {requests.length > 0 && isOnline ? (
+                <p className="text-xs text-ink/55">
                   Narrowing by shared pickup zone and corridor starts when you
                   accept a request in the next phase.
                 </p>
@@ -343,43 +378,52 @@ const TeslaPage = () => {
 
             {isLoadingRequests ? (
               <div className="flex flex-col gap-3">
-                <div className="skeleton h-20 w-full" />
-                <div className="skeleton h-20 w-full" />
+                <Skeleton className="h-20 w-full" label="Loading requests" />
+                <Skeleton className="h-20 w-full" label="Loading requests" />
               </div>
             ) : requests.length === 0 ? (
-              <article className="card bg-base-100 shadow">
-                <div className="card-body">
-                  <h3 className="card-title text-base">Nothing to match yet</h3>
-                  <p className="text-sm text-base-content/70">
+              <Panel as="article" className="animate-rise">
+                <div className="flex flex-col gap-2 px-7 py-6">
+                  <h3 className="font-display text-base font-semibold text-ink">
+                    Nothing to match yet
+                  </h3>
+                  <p className="text-sm text-ink/60">
                     When a passenger requests a ride, it will appear here with the
                     route and the fare it would pay.
                   </p>
                 </div>
-              </article>
+              </Panel>
             ) : (
               <ul className="flex flex-col gap-3">
                 {requests.map((request) => (
-                  <li
-                    key={request.id}
-                    className="card bg-base-100 shadow"
-                  >
-                    <div className="card-body flex-row flex-wrap items-center justify-between gap-3">
-                      <div className="flex flex-col gap-1">
-                        <p className="font-medium">
-                          {request.pickupZoneName} &rarr;{" "}
-                          {request.destinationZoneName}
-                        </p>
-                        <p className="text-xs text-base-content/60">
-                          {formatSeats(request.seatsRequested)} &middot;{" "}
-                          {request.pickupZoneCode} to{" "}
-                          {request.destinationZoneCode} &middot; requested{" "}
-                          {formatTimestamp(request.createdAt)}
-                        </p>
+                  <li key={request.id}>
+                    {/*
+                      A Panel rather than a card-with-a-body: this row is a list item,
+                      not a document, and the 26px radius now means "rides row" in this
+                      app rather than "card" everywhere.
+                    */}
+                    <Panel className="animate-rise">
+                      <div className="flex flex-wrap items-center justify-between gap-3 px-7 py-5">
+                        <div className="flex min-w-0 flex-col gap-1">
+                          <p className="font-display flex flex-wrap items-center gap-1.5 font-medium text-ink">
+                            <span>{request.pickupZoneName}</span>
+                            <span aria-hidden className="text-mint">
+                              &rarr;
+                            </span>
+                            <span>{request.destinationZoneName}</span>
+                          </p>
+                          <p className="text-xs text-ink/55">
+                            {formatSeats(request.seatsRequested)} &middot;{" "}
+                            {request.pickupZoneCode} to{" "}
+                            {request.destinationZoneCode} &middot; requested{" "}
+                            {formatTimestamp(request.createdAt)}
+                          </p>
+                        </div>
+                        <span className="font-display text-base font-semibold tabular-nums text-ink">
+                          {formatPoysha(request.fareEstimatePoysha)}
+                        </span>
                       </div>
-                      <span className="font-semibold tabular-nums">
-                        {formatPoysha(request.fareEstimatePoysha)}
-                      </span>
-                    </div>
+                    </Panel>
                   </li>
                 ))}
               </ul>
@@ -388,9 +432,12 @@ const TeslaPage = () => {
         </>
       )}
 
-      <p className="text-xs text-base-content/50">
+      <p className="text-xs text-ink/55">
         Back to{" "}
-        <Link className="link" href="/dashboard">
+        <Link
+          className="font-semibold text-forest underline decoration-mint decoration-2 underline-offset-4 hover:decoration-forest"
+          href="/dashboard"
+        >
           your dashboard
         </Link>
       </p>
